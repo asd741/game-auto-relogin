@@ -1,2 +1,22 @@
-build
-dist
+/build
+/dist
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# IDE
+.vscode/
+.idea/
+
+# Project specific
+mhs_config.json
