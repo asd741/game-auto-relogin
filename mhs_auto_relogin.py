@@ -18,34 +18,35 @@ is_running = False
 
 # 事件配置 (繁體中文顯示)
 LOGIN_CONFIG = {
-    "點擊斷線彈出框的確定按鈕": {"interval": 30, "max_wait": 60, "coords": [976, 602]},
-    "點擊伺服器": {"interval": 15, "max_wait": 30, "coords": [954, 422]},
-    "點擊登入按鈕": {"interval": 10, "max_wait": 20, "coords": [953, 689]},
-    "若登入失敗的確認按鈕(非必填)": {"interval": 10, "max_wait": 20, "coords": [973, 602]},
-    "點擊二次密碼(第一位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
-    "點擊二次密碼(第二位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
-    "點擊二次密碼(第三位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
-    "點擊二次密碼(第四位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
-    "點擊二次密碼確認按鈕": {"interval": 5, "max_wait": 10, "coords": [951, 571]},
-    "點擊角色暱稱": {"interval": 5, "max_wait": 10, "coords": [1809, 219]},
-    "點擊進入遊戲按鈕": {"interval": 5, "max_wait": 10, "coords": [1815, 378]},
-    "點擊分流": {"interval": 5, "max_wait": 10, "coords": [944, 420]},
-    "點擊登入按鈕": {"interval": 5, "max_wait": 10, "coords": [954, 695]}
+    "點擊斷線彈出框的確定按鈕": {"操作前等待 30 秒": True, "coords": [976, 602]},
+    "點擊伺服器": {"操作前等待 15 秒": True, "coords": [954, 422]},
+    "點擊登入按鈕": {"操作前等待 10 秒": True, "coords": [953, 689]},
+    "若登入失敗的確認按鈕(非必填)": {"操作前等待 10 秒": True, "coords": [973, 602]},
+    "點擊二次密碼(第一位)": {"操作前等待 1 秒": True, "coords": [944, 537]},
+    "點擊二次密碼(第二位)": {"操作前等待 1 秒": True, "coords": [944, 537]},
+    "點擊二次密碼(第三位)": {"操作前等待 1 秒": True, "coords": [944, 537]},
+    "點擊二次密碼(第四位)": {"操作前等待 1 秒": True, "coords": [944, 537]},
+    "點擊二次密碼確認按鈕": {"操作前等待 5 秒": True, "coords": [951, 571]},
+    "點擊角色暱稱": {"操作前等待 5 秒": True, "coords": [1809, 219]},
+    "點擊進入遊戲按鈕": {"操作前等待 5 秒": True, "coords": [1815, 378]},
+    "點擊分流": {"操作前等待 5 秒": True, "coords": [944, 420]},
+    "點擊登入按鈕": {"操作前等待 5 秒": True, "coords": [954, 695]}
 }
 
 TELEPORT_CONFIG = {
     "teleport_key": "不使用奇門遁甲卷",
     "events": {
-        "點擊奇門遁甲卷的分頁(若想移動場所在第二頁，就需要點擊II)": {"interval": 5, "max_wait": 10, "coords": [855, 659]},
-        "點擊移動場所名稱": {"interval": 5, "max_wait": 10, "coords": [940, 581]},
-        "點擊移動按鈕": {"interval": 5, "max_wait": 10, "coords": [952, 706]}
+        "點擊奇門遁甲卷的分頁(若想移動場所在第二頁，就需要點擊II)": {"操作前等待 5 秒": True, "coords": [855, 659]},
+        "點擊移動場所名稱": {"操作前等待 5 秒": True, "coords": [940, 581]},
+        "點擊移動按鈕": {"操作前等待 5 秒": True, "coords": [952, 706]}
     }
 }
 
 TRAINING_CONFIG = {
     "events": {
-        "開始狩獵": {"interval": 5, "max_wait": 10, "coords": [732, 760]},
-        "結束狩獵": {"interval": 5, "max_wait": 10, "coords": [732, 760]}
+        "點擊地面讓角色走路(必填)": {"操作前等待 5 秒": True, "coords": [500, 400]},
+        "開始狩獵": {"操作前等待 5 秒": True, "coords": [732, 760]},
+        "結束狩獵": {"操作前等待 5 秒": True, "coords": [732, 760]}
     }
 }
 
@@ -139,8 +140,7 @@ class MHSAutoReloginApp:
     
     def ensure_event_defaults(self, target, source):
         """確保事件配置有預設值"""
-        target.setdefault("interval", source["interval"])
-        target.setdefault("max_wait", source["max_wait"])
+        target.setdefault("操作前等待", source["操作前等待"])
         target.setdefault("coords", source["coords"])
     
     def load_config(self):
@@ -211,6 +211,12 @@ class MHSAutoReloginApp:
                                   text="啟動自動重連", 
                                   command=self.toggle_auto_relogin)
         self.start_btn.pack(side=tk.LEFT, padx=5)
+        
+        # 保存配置按鈕
+        save_btn = ttk.Button(button_frame,
+                            text="保存配置",
+                            command=self.save_config)
+        save_btn.pack(side=tk.LEFT, padx=5)
         
         # 狀態顯示
         self.status_var = tk.StringVar()
@@ -296,8 +302,12 @@ class MHSAutoReloginApp:
                 config["events"][event_name] = event_data
                 
             # 確保事件配置有預設值
-            event_data.setdefault("interval", 5)
-            event_data.setdefault("max_wait", 10)
+            wait_time = 5  # 預設等待時間
+            for key in event_data.keys():
+                if key.startswith("操作前等待"):
+                    wait_time = int(key.split()[1])
+                    break
+            event_data.setdefault(f"操作前等待 {wait_time} 秒", True)
             event_data.setdefault("coords", [0, 0])
             
             frame = ttk.Frame(parent)
@@ -306,17 +316,15 @@ class MHSAutoReloginApp:
             # 事件名稱
             ttk.Label(frame, text=event_name, width=25).pack(side=tk.LEFT, padx=2)
             
-            # 檢查間隔
-            ttk.Label(frame, text="檢查間隔:").pack(side=tk.LEFT)
-            frame.interval_spin = ttk.Spinbox(frame, from_=1, to=300, width=5)
-            frame.interval_spin.pack(side=tk.LEFT, padx=2)
-            frame.interval_spin.set(event_data["interval"])
+            # 操作前等待時間
+            ttk.Label(frame, text="操作前等待:").pack(side=tk.LEFT)
+            frame.wait_spin = ttk.Spinbox(frame, from_=1, to=300, width=5)
+            frame.wait_spin.pack(side=tk.LEFT, padx=2)
+            frame.wait_spin.set(wait_time)
             
-            # 最大等待
-            ttk.Label(frame, text="最大等待:").pack(side=tk.LEFT)
-            frame.max_wait_spin = ttk.Spinbox(frame, from_=1, to=120, width=5)
-            frame.max_wait_spin.pack(side=tk.LEFT, padx=2)
-            frame.max_wait_spin.set(event_data["max_wait"])
+            # 綁定等待時間變更事件
+            frame.wait_spin.bind('<KeyRelease>', lambda e, f=frame, en=event_name, cn=config_name: self.on_wait_time_change(e, f, en, cn))
+            frame.wait_spin.bind('<ButtonRelease-1>', lambda e, f=frame, en=event_name, cn=config_name: self.on_wait_time_change(e, f, en, cn))
             
             # 座標記錄按鈕
             frame.record_btn = ttk.Button(frame, text="記錄座標", 
@@ -410,8 +418,7 @@ class MHSAutoReloginApp:
                 if "events" not in self.config["teleport_config"]:
                     self.config["teleport_config"]["events"] = {}
                 self.config["teleport_config"]["events"][event_name] = {
-                    "interval": 5,
-                    "max_wait": 10,
+                    "操作前等待 5 秒": True,
                     "coords": [game_x, game_y]
                 }
                 current_config = self.config["teleport_config"]["events"][event_name]
@@ -423,8 +430,7 @@ class MHSAutoReloginApp:
                 if "events" not in self.config["training_config"]:
                     self.config["training_config"]["events"] = {}
                 self.config["training_config"]["events"][event_name] = {
-                    "interval": 5,
-                    "max_wait": 10,
+                    "操作前等待 5 秒": True,
                     "coords": [game_x, game_y]
                 }
                 current_config = self.config["training_config"]["events"][event_name]
@@ -435,8 +441,7 @@ class MHSAutoReloginApp:
                     self.config["login_config"] = {"events": {}}
                 if event_name not in self.config["login_config"]["events"]:
                     self.config["login_config"]["events"][event_name] = {
-                        "interval": 5,
-                        "max_wait": 10,
+                        "操作前等待 5 秒": True,
                         "coords": [0, 0]
                     }
                 self.config["login_config"]["events"][event_name]["coords"] = [game_x, game_y]
@@ -447,10 +452,15 @@ class MHSAutoReloginApp:
                 frame = self.event_frames[event_name]
                 frame.coord_label.config(text=f"({game_x}, {game_y})")
                 
-                # 更新間隔和等待時間
-                if hasattr(frame, "interval_spin") and hasattr(frame, "max_wait_spin"):
-                    current_config["interval"] = int(frame.interval_spin.get())
-                    current_config["max_wait"] = int(frame.max_wait_spin.get())
+                # 更新等待時間
+                if hasattr(frame, "wait_spin"):
+                    wait_time = int(frame.wait_spin.get())
+                    # 移除所有舊的等待時間鍵
+                    for key in list(current_config.keys()):
+                        if key.startswith("操作前等待"):
+                            del current_config[key]
+                    # 添加新的等待時間
+                    current_config[f"操作前等待 {wait_time} 秒"] = True
             
             # 保存配置
             self.save_config()
@@ -630,6 +640,39 @@ class MHSAutoReloginApp:
         else:
             self.root.destroy()
     
+    def on_wait_time_change(self, event, frame, event_name, config_name):
+        """處理等待時間變更事件"""
+        try:
+            # 嘗試從 spinbox 獲取值
+            wait_time = int(frame.wait_spin.get())
+            
+            # 驗證範圍
+            if wait_time < 1:
+                wait_time = 1
+                frame.wait_spin.set(wait_time)
+            elif wait_time > 300:
+                wait_time = 300
+                frame.wait_spin.set(wait_time)
+            
+            # 更新配置
+            current_config = self.config[config_name]["events"][event_name]
+            
+            # 移除所有舊的等待時間鍵
+            for key in list(current_config.keys()):
+                if key.startswith("操作前等待"):
+                    del current_config[key]
+            
+            # 添加新的等待時間
+            current_config[f"操作前等待 {wait_time} 秒"] = True
+            
+            # 保存配置
+            self.save_config()
+            
+        except ValueError:
+            # 如果輸入的不是數字，恢復為預設值
+            frame.wait_spin.set(5)
+            self.on_wait_time_change(event, frame, event_name, config_name)  # 運行一次以確保配置更新
+    
     def update_teleport_key(self, *args):
         """更新奇門遁甲卷快捷鍵設置"""
         key = self.teleport_var.get()
@@ -640,7 +683,7 @@ class MHSAutoReloginApp:
         
         # 更新事件框架的按鈕狀態
         teleport_events = [
-            "點擊奇門遁甲卷的分頁(若想移動場所在第二頁，就需要點擊II)",
+            "點擊奇門遁甲卷的分頁(I or II)",
             "點擊移動場所名稱",
             "點擊移動按鈕"
         ]
@@ -649,6 +692,19 @@ class MHSAutoReloginApp:
             if event_name in self.event_frames:
                 self.event_frames[event_name].record_btn.config(state=state)
         self.save_config()
+
+    def update_wait_time(self, event_type, event_name, wait_time):
+        """更新操作前等待時間"""
+        self.log(f"正在更新 {event_type}.{event_name} 的操作前等待時間為: {wait_time}")
+        if event_type == "login":
+            self.config["login_config"]["events"][event_name]["操作前等待"] = wait_time
+        elif event_type == "teleport":
+            self.config["teleport_config"]["events"][event_name]["操作前等待"] = wait_time
+        elif event_type == "training":
+            self.config["training_config"]["events"][event_name]["操作前等待"] = wait_time
+        
+        self.save_config()
+        self.log(f"已保存 {event_type}.{event_name} 的新等待時間")
 
 def click_game(x, y, clicks=1):
     debug_log(f"點擊位置: ({x}, {y})")
