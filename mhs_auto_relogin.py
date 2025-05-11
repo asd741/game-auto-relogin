@@ -334,7 +334,7 @@ class MHSAutoReloginApp:
             ttk.Label(frame, text=event_name, width=25).pack(side=tk.LEFT, padx=2)
             
             # 操作前等待時間
-            ttk.Label(frame, text="操作前等待:").pack(side=tk.LEFT)
+            ttk.Label(frame, text="操作前等待(秒)").pack(side=tk.LEFT)
             frame.wait_spin = ttk.Spinbox(frame, from_=1, to=300, width=5)
             frame.wait_spin.pack(side=tk.LEFT, padx=2)
             frame.wait_spin.set(wait_time)
