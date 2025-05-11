@@ -18,26 +18,26 @@ is_running = False
 
 # 事件配置 (繁體中文顯示)
 LOGIN_CONFIG = {
-    "斷線確認": {"interval": 30, "max_wait": 60, "coords": [976, 602]},
-    "選擇伺服器": {"interval": 15, "max_wait": 30, "coords": [954, 422]},
-    "登入按鈕": {"interval": 10, "max_wait": 20, "coords": [953, 689]},
-    "網路失敗確認": {"interval": 10, "max_wait": 20, "coords": [973, 602]},
-    "二次密碼(第一位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
-    "二次密碼(第二位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
-    "二次密碼(第三位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
-    "二次密碼(第四位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
-    "二次密碼確認按鈕": {"interval": 5, "max_wait": 10, "coords": [951, 571]},
-    "選擇角色": {"interval": 5, "max_wait": 10, "coords": [1809, 219]},
-    "進入遊戲按鈕": {"interval": 5, "max_wait": 10, "coords": [1815, 378]},
-    "選擇分流": {"interval": 5, "max_wait": 10, "coords": [944, 420]},
-    "分流確認按鈕": {"interval": 5, "max_wait": 10, "coords": [954, 695]}
+    "點擊斷線彈出框的確定按鈕": {"interval": 30, "max_wait": 60, "coords": [976, 602]},
+    "點擊伺服器": {"interval": 15, "max_wait": 30, "coords": [954, 422]},
+    "點擊登入按鈕": {"interval": 10, "max_wait": 20, "coords": [953, 689]},
+    "若登入失敗的確認按鈕(非必填)": {"interval": 10, "max_wait": 20, "coords": [973, 602]},
+    "點擊二次密碼(第一位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
+    "點擊二次密碼(第二位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
+    "點擊二次密碼(第三位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
+    "點擊二次密碼(第四位)": {"interval": 1, "max_wait": 5, "coords": [944, 537]},
+    "點擊二次密碼確認按鈕": {"interval": 5, "max_wait": 10, "coords": [951, 571]},
+    "點擊角色暱稱": {"interval": 5, "max_wait": 10, "coords": [1809, 219]},
+    "點擊進入遊戲按鈕": {"interval": 5, "max_wait": 10, "coords": [1815, 378]},
+    "點擊分流": {"interval": 5, "max_wait": 10, "coords": [944, 420]},
+    "點擊登入按鈕": {"interval": 5, "max_wait": 10, "coords": [954, 695]}
 }
 
 TELEPORT_CONFIG = {
-    "teleport_key": "不使用奇門遁甲捲",
+    "teleport_key": "不使用奇門遁甲卷",
     "events": {
-        "點擊移動場所分頁": {"interval": 5, "max_wait": 10, "coords": [855, 659]},
-        "點擊可移動場所名稱": {"interval": 5, "max_wait": 10, "coords": [940, 581]},
+        "點擊奇門遁甲卷的分頁(若想移動場所在第二頁，就需要點擊II)": {"interval": 5, "max_wait": 10, "coords": [855, 659]},
+        "點擊移動場所名稱": {"interval": 5, "max_wait": 10, "coords": [940, 581]},
         "點擊移動按鈕": {"interval": 5, "max_wait": 10, "coords": [952, 706]}
     }
 }
@@ -212,10 +212,6 @@ class MHSAutoReloginApp:
                                   command=self.toggle_auto_relogin)
         self.start_btn.pack(side=tk.LEFT, padx=5)
         
-        ttk.Button(button_frame, 
-                  text="保存配置", 
-                  command=self.save_config).pack(side=tk.LEFT, padx=5)
-        
         # 狀態顯示
         self.status_var = tk.StringVar()
         self.status_var.set("狀態: 就緒")
@@ -234,19 +230,56 @@ class MHSAutoReloginApp:
         """創建登入事件框架"""
         frame = ttk.Frame(notebook)
         self.create_event_controls(frame, "login_config")
-        notebook.add(frame, text="登入事件")
+        notebook.add(frame, text="重新登入流程")
     
     def create_teleport_frame(self, notebook):
         """創建傳送事件框架"""
         frame = ttk.Frame(notebook)
+        
+        # 添加注意事項
+        warning_label = ttk.Label(
+            frame, 
+            text="若要使用此功能，請在遊戲內設置選項中，環境分區設為聊天優先，而不是快捷鍵優先",
+            foreground="red"
+        )
+        warning_label.pack(fill=tk.X, pady=5)
+        
+        # 創建快捷鍵選擇區域
+        shortcut_frame = ttk.LabelFrame(frame, text="遁甲卷道具快捷鍵")
+        shortcut_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        # 創建Radio按鈕
+        self.teleport_var = tk.StringVar(value=self.config["teleport_key"])
+        
+        # 不使用選項
+        ttk.Radiobutton(
+            shortcut_frame, 
+            text="不使用", 
+            variable=self.teleport_var, 
+            value="不使用奇門遁甲卷"
+        ).pack(side=tk.LEFT, padx=5)
+        
+        # F1-F10按鍵選項
+        for i in range(1, 11):
+            ttk.Radiobutton(
+                shortcut_frame, 
+                text=f"F{i}", 
+                variable=self.teleport_var, 
+                value=f"F{i}"
+            ).pack(side=tk.LEFT)
+        
+        # 綁定更新事件
+        self.teleport_var.trace_add("write", self.update_teleport_key)
+        
+        # 創建事件控制項
         self.create_event_controls(frame, "teleport_config")
-        notebook.add(frame, text="傳送事件")
+        notebook.add(frame, text="遁甲卷使用流程")
     
     def create_training_frame(self, notebook):
         """創建練功事件框架"""
         frame = ttk.Frame(notebook)
         self.create_event_controls(frame, "training_config")
-        notebook.add(frame, text="練功事件")
+        notebook.add(frame, text="自動狩獵流程")
     
     def create_event_controls(self, parent, config_name):
         """創建事件配置控件"""
@@ -370,7 +403,7 @@ class MHSAutoReloginApp:
             game_y = y - window_rect.top
             
             # 統一處理所有類型的座標記錄
-            if event_name in ["點擊移動場所分頁", "點擊可移動場所名稱", "點擊移動按鈕"]:
+            if event_name in ["點擊奇門遁甲卷的分頁(若想移動場所在第二頁，就需要點擊II)", "點擊移動場所名稱", "點擊移動按鈕"]:
                 # 處理奇門遁甲卷配置
                 if "teleport_config" not in self.config:
                     self.config["teleport_config"] = {"events": {}}
@@ -520,17 +553,17 @@ class MHSAutoReloginApp:
     def handle_disconnection(self):
         """處理斷線確認"""
         self.log("等待斷線確認...")
-        self.wait_and_click("斷線確認")
+        self.wait_and_click("點擊斷線彈出框的確定按鈕")
     
     def handle_server_selection(self):
         """處理伺服器選擇"""
-        self.log("選擇伺服器...")
-        self.wait_and_click("選擇伺服器")
+        self.log("點擊伺服器...")
+        self.wait_and_click("點擊伺服器")
     
     def handle_login(self):
         """處理登入按鈕"""
         self.log("點擊登入按鈕...")
-        self.wait_and_click("登入按鈕")
+        self.wait_and_click("點擊登入按鈕")
     
     def handle_secondary_password(self):
         """處理二次密碼"""
@@ -539,21 +572,21 @@ class MHSAutoReloginApp:
             
         self.log("輸入二次密碼...")
         for i in range(1, 5):
-            self.wait_and_click(f"二次密碼(第{i}位)")
+            self.wait_and_click(f"點擊二次密碼(第{i}位)")
             
-        self.wait_and_click("二次密碼確認按鈕")
+        self.wait_and_click("點擊二次密碼確認按鈕")
     
     def handle_character_selection(self):
         """處理角色選擇"""
-        self.log("選擇角色...")
-        self.wait_and_click("選擇角色")
-        self.wait_and_click("進入遊戲按鈕")
+        self.log("點擊角色暱稱...")
+        self.wait_and_click("點擊角色暱稱")
+        self.wait_and_click("點擊進入遊戲按鈕")
     
     def handle_channel_selection(self):
         """處理分流選擇"""
-        self.log("選擇分流...")
-        self.wait_and_click("選擇分流")
-        self.wait_and_click("分流確認按鈕")
+        self.log("點擊分流...")
+        self.wait_and_click("點擊分流")
+        self.wait_and_click("點擊登入按鈕")
     
     def cleanup_after_relogin(self):
         """重連完成後清理"""
@@ -607,8 +640,8 @@ class MHSAutoReloginApp:
         
         # 更新事件框架的按鈕狀態
         teleport_events = [
-            "點擊移動場所分頁",
-            "點擊可移動場所名稱",
+            "點擊奇門遁甲卷的分頁(若想移動場所在第二頁，就需要點擊II)",
+            "點擊移動場所名稱",
             "點擊移動按鈕"
         ]
         
