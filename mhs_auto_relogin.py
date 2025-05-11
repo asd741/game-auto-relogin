@@ -36,7 +36,7 @@ LOGIN_CONFIG = {
 TELEPORT_CONFIG = {
     "teleport_key": "不使用奇門遁甲卷",
     "events": {
-        "點擊奇門遁甲卷的分頁(若想移動場所在第二頁，就需要點擊II)": {"操作前等待 5 秒": True, "coords": [855, 659]},
+        "點擊奇門遁甲卷的分頁(I or II)": {"操作前等待 5 秒": True, "coords": [855, 659]},
         "點擊移動場所名稱": {"操作前等待 5 秒": True, "coords": [940, 581]},
         "點擊移動按鈕": {"操作前等待 5 秒": True, "coords": [952, 706]}
     }
@@ -428,7 +428,7 @@ class MHSAutoReloginApp:
             game_y = y - window_rect.top
             
             # 統一處理所有類型的座標記錄
-            if event_name in ["點擊奇門遁甲卷的分頁(若想移動場所在第二頁，就需要點擊II)", "點擊移動場所名稱", "點擊移動按鈕"]:
+            if event_name in ["點擊奇門遁甲卷的分頁(I or II)", "點擊移動場所名稱", "點擊移動按鈕"]:
                 # 處理奇門遁甲卷配置
                 if "teleport_config" not in self.config:
                     self.config["teleport_config"] = {"events": {}}
