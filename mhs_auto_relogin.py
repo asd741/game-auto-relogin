@@ -140,7 +140,24 @@ class MHSAutoReloginApp:
     
     def ensure_event_defaults(self, target, source):
         """確保事件配置有預設值"""
-        target.setdefault("操作前等待", source["操作前等待"])
+        # 查找源配置中的等待時間
+        wait_time = 5  # 預設等待時間
+        for key in source.keys():
+            if key.startswith("操作前等待"):
+                wait_time = int(key.split()[1])
+                break
+                
+        # 確保目標配置有等待時間
+        has_wait_time = False
+        for key in list(target.keys()):
+            if key.startswith("操作前等待"):
+                has_wait_time = True
+                break
+                
+        if not has_wait_time:
+            target[f"操作前等待 {wait_time} 秒"] = True
+            
+        # 確保有座標
         target.setdefault("coords", source["coords"])
     
     def load_config(self):
@@ -696,15 +713,39 @@ class MHSAutoReloginApp:
     def update_wait_time(self, event_type, event_name, wait_time):
         """更新操作前等待時間"""
         self.log(f"正在更新 {event_type}.{event_name} 的操作前等待時間為: {wait_time}")
-        if event_type == "login":
-            self.config["login_config"]["events"][event_name]["操作前等待"] = wait_time
-        elif event_type == "teleport":
-            self.config["teleport_config"]["events"][event_name]["操作前等待"] = wait_time
-        elif event_type == "training":
-            self.config["training_config"]["events"][event_name]["操作前等待"] = wait_time
         
+        # 移除所有舊的等待時間鍵
+        if event_type == "login":
+            current_config = self.config["login_config"]["events"][event_name]
+        elif event_type == "teleport":
+            current_config = self.config["teleport_config"]["events"][event_name]
+        elif event_type == "training":
+            current_config = self.config["training_config"]["events"][event_name]
+        else:
+            self.log(f"未知的事件類型: {event_type}")
+            return
+            
+        # 移除所有舊的等待時間鍵
+        for key in list(current_config.keys()):
+            if key.startswith("操作前等待"):
+                del current_config[key]
+        
+        # 添加新的等待時間
+        current_config[f"操作前等待 {wait_time} 秒"] = True
+        
+        # 保存配置
         self.save_config()
-        self.log(f"已保存 {event_type}.{event_name} 的新等待時間")
+    
+    def click_game(self, x, y, clicks=1):
+        debug_log(f"點擊位置: ({x}, {y})")
+        try:
+            for _ in range(clicks):
+                pydirectinput.moveTo(x, y)
+                pydirectinput.mouseDown()
+                time.sleep(0.05)
+                pydirectinput.mouseUp()
+        except Exception as e:
+            debug_log(f"點擊失敗: {e}")
 
 def click_game(x, y, clicks=1):
     debug_log(f"點擊位置: ({x}, {y})")
