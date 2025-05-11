@@ -93,10 +93,18 @@ class MHSAutoReloginApp:
         
         # 配置文件路徑
         self.config_file = "mhs_config.json"
+        
+        # 創建主要面板
+        main_panel, left_panel, right_panel = self.create_main_panels()
+        
+        # 創建日誌區域
+        self.create_log_area(right_panel)
+        
+        # 初始化配置
         self.config = self.load_config()
         
-        # 創建UI
-        self.create_widgets()
+        # 創建主要元件
+        self.create_widgets(left_panel)
         
         # 窗口關閉事件
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -141,21 +149,25 @@ class MHSAutoReloginApp:
     
     def create_main_panels(self):
         """創建主要面板"""
-        # 設定視窗預設大小
-        self.root.geometry("800x600")
-        
+        # 創建主要分割面板
         main_panel = ttk.Frame(self.root)
         main_panel.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # 左側面板 (90%)
-        left_panel = ttk.Frame(main_panel)
-        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        left_panel.configure(width=720)  # 90% of 800px
+        # 創建容器來管理百分比
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_rowconfigure(0, weight=1)  # 設置根窗口行權重
         
-        # 右側面板 (10%)
+        main_panel.grid_columnconfigure(0, weight=75)  # 左側面板寬度 75%
+        main_panel.grid_columnconfigure(1, weight=25)  # 右側面板寬度 25%
+        main_panel.grid_rowconfigure(0, weight=1)  # 設置面板行權重使其填滿高度
+        
+        # 左側面板 - 設定區域 (75%)
+        left_panel = ttk.Frame(main_panel)
+        left_panel.grid(row=0, column=0, sticky='nsew')
+        
+        # 右側面板 - 日誌區域 (25%)
         right_panel = ttk.Frame(main_panel)
-        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH)
-        right_panel.configure(width=80)  # 10% of 800px
+        right_panel.grid(row=0, column=1, sticky='nsew')
         
         return main_panel, left_panel, right_panel
 
@@ -192,18 +204,26 @@ class MHSAutoReloginApp:
     
     def create_scrollable_frame(self, parent):
         """創建可滾動的框架"""
+        # 創建容器
         container = ttk.Frame(parent)
-        container.pack(fill=tk.BOTH, expand=True, pady=5)
-        
-        # 移除邊框
-        canvas = tk.Canvas(container, highlightthickness=0)
+        container.pack(fill=tk.BOTH, expand=True)
+
+        # 創建 Canvas 和 Scrollbar
+        canvas = tk.Canvas(container)
         scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
-        
-        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+        # 設置滾動區域
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        # 創建畫布視窗
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
-        
+
+        # 使用pack布局
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
@@ -217,14 +237,26 @@ class MHSAutoReloginApp:
     
     def create_teleport_frame(self, parent):
         """創建奇門遁甲捲配置框架"""
-        frame = ttk.LabelFrame(parent, text="奇門遁甲捲配置", padding=10)
-        frame.pack(fill=tk.BOTH, expand=True)
+        teleport_frame = ttk.LabelFrame(parent, text="奇門遁甲捲配置", padding=10)
+        teleport_frame.pack(fill=tk.X, pady=5)
         
-        # 遊戲環境與快捷鍵設定
-        self.create_game_env_frame(frame)
-        self.create_teleport_key_frame(frame)
+        # 創建快捷鍵設定框架
+        self.create_teleport_key_frame(teleport_frame)
         
-        return frame
+        # 創建事件配置
+        for event_name, description in [
+            ("點擊移動場所分頁", "點擊移動場所分頁的座標"),
+            ("點擊可移動場所名稱", "點擊可移動場所名稱的座標"),
+            ("點擊移動按鈕", "點擊移動按鈕的座標")
+        ]:
+            frame = EventFrame(teleport_frame, event_name, description)
+            frame.pack(fill=tk.X, pady=2)
+            
+            # 初始化為禁用狀態
+            frame.record_btn.config(state="disabled")
+            
+            # 儲存事件框架
+            self.event_frames[event_name] = frame
     
     def create_game_env_frame(self, parent):
         """創建遊戲環境設定框架"""
@@ -232,7 +264,7 @@ class MHSAutoReloginApp:
         env_frame.pack(fill=tk.X, pady=2)
         
         ttk.Label(env_frame, text="遊戲環境:").pack(side=tk.LEFT, padx=2)
-        self.env_combobox = ttk.Combobox(env_frame, values=["聊天優先"], state="readonly", width=15)
+        self.env_combobox = ttk.Combobox(env_frame, values=["聊天優先"], state="disabled", width=15)
         self.env_combobox.pack(side=tk.LEFT, padx=2)
         self.env_combobox.set("聊天優先")
         
@@ -241,21 +273,19 @@ class MHSAutoReloginApp:
     
     def create_teleport_key_frame(self, parent):
         """創建奇門遁甲捲快捷鍵設定框架"""
-        key_frame = ttk.Frame(parent)
-        key_frame.pack(fill=tk.X, pady=2)
+        frame = ttk.Frame(parent)
+        frame.pack(fill=tk.X, pady=2)
         
-        ttk.Label(key_frame, text="奇門遁甲捲快捷鍵:").pack(side=tk.LEFT, padx=2)
-        self.teleport_combobox = ttk.Combobox(
-            key_frame, 
-            values=["不使用奇門遁甲捲", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10"], 
-            state="readonly",
-            width=15
-        )
+        ttk.Label(frame, text="快捷鍵:").pack(side=tk.LEFT, padx=2)
+        self.teleport_combobox = ttk.Combobox(frame, values=["不使用奇門遁甲捲"] + [f"F{i}" for i in range(1, 11)], state="readonly", width=15)
         self.teleport_combobox.pack(side=tk.LEFT, padx=2)
-        self.teleport_combobox.set(self.config["teleport_key"])
+        self.teleport_combobox.set("不使用奇門遁甲捲")
         
         # 綁定更新事件
         self.teleport_combobox.bind("<<ComboboxSelected>>", self.update_teleport_key)
+        
+        # 初始化狀態
+        self.update_teleport_key()
     
     def create_training_frame(self, parent):
         """創建自動狩獵配置框架"""
@@ -263,9 +293,8 @@ class MHSAutoReloginApp:
         frame.pack(fill=tk.BOTH, expand=True)
         return frame
     
-    def create_widgets(self):
-        main_panel, left_panel, right_panel = self.create_main_panels()
-        
+    def create_widgets(self, left_panel):
+        """創建所有元件"""
         # 頂部按鈕欄
         self.create_top_buttons(left_panel)
         
@@ -315,36 +344,7 @@ class MHSAutoReloginApp:
             
             self.event_frames[event_name] = frame
         
-        for i, (event_name, event_data) in enumerate(self.config["teleport_config"].items()):
-            frame = ttk.Frame(teleport_frame)
-            frame.pack(fill=tk.X, pady=2)
-            
-            # 事件名稱
-            ttk.Label(frame, text=event_name, width=25).pack(side=tk.LEFT, padx=2)
-            
-            # 檢查間隔
-            ttk.Label(frame, text="檢查間隔:").pack(side=tk.LEFT)
-            frame.interval_spin = ttk.Spinbox(frame, from_=1, to=300, width=5)
-            frame.interval_spin.pack(side=tk.LEFT, padx=2)
-            frame.interval_spin.set(event_data["interval"])
-            
-            # 最大等待
-            ttk.Label(frame, text="最大等待:").pack(side=tk.LEFT)
-            frame.max_wait_spin = ttk.Spinbox(frame, from_=1, to=120, width=5)
-            frame.max_wait_spin.pack(side=tk.LEFT, padx=2)
-            frame.max_wait_spin.set(event_data["max_wait"])
-            
-            # 座標記錄按鈕
-            frame.record_btn = ttk.Button(frame, text="記錄座標", 
-                                        command=lambda e=event_name: self.start_recording(e))
-            frame.record_btn.pack(side=tk.LEFT, padx=5)
-            
-            # 座標顯示
-            frame.coord_label = ttk.Label(frame, text=f"({event_data['coords'][0]}, {event_data['coords'][1]})")
-            frame.coord_label.pack(side=tk.LEFT)
-            
-            self.event_frames[event_name] = frame
-        
+        # 創建自動狩獵配置
         for i, (event_name, event_data) in enumerate(self.config["training_config"].items()):
             frame = ttk.Frame(training_frame)
             frame.pack(fill=tk.X, pady=2)
@@ -375,18 +375,24 @@ class MHSAutoReloginApp:
             
             self.event_frames[event_name] = frame
         
-        # 日誌面板
-        log_frame = ttk.LabelFrame(right_panel, text="運行日誌", padding=10)
-        log_frame.pack(fill=tk.BOTH, expand=True)
-        
-        self.log_text = scrolledtext.ScrolledText(log_frame, height=35, width=80, state="disabled")
-        self.log_text.pack(fill=tk.BOTH, expand=True)
-        
         # 狀態欄
         self.status_var = tk.StringVar()
         self.status_var.set("狀態: 就緒")
         status_bar = ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN)
         status_bar.pack(fill=tk.X, padx=10, pady=5)
+    
+    def create_log_area(self, parent):
+        """創建日誌區域"""
+        # 創建日誌框架
+        log_frame = ttk.LabelFrame(parent, text="運行日誌")
+        log_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # 創建可滾動的文字區域
+        self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, width=40, height=30)
+        self.log_text.pack(fill=tk.BOTH, expand=True)
+        
+        # 移除滾動條的外框
+        self.log_text.configure(bd=0, highlightthickness=0)
     
     def start_recording(self, event_name):
         """開始記錄座標"""
@@ -521,21 +527,21 @@ class MHSAutoReloginApp:
             self.root.destroy()
     
     def update_teleport_key(self, event=None):
+        """更新快捷鍵設定"""
         key = self.teleport_combobox.get()
         self.config["teleport_key"] = key
         
-        # 更新移動相關事件的狀態
-        state = "normal" if key != "不使用奇門遁甲捲" else "disabled"
+        # 更新相關按鈕的狀態
+        state = "disabled" if key == "不使用奇門遁甲捲" else "normal"
         
-        # 禁用遊戲環境選項
-        self.env_combobox.config(state=state)
-        
-        # 禁用移動相關按鈕
-        for event_name in [
+        # 更新事件框架的按鈕狀態
+        teleport_events = [
             "點擊移動場所分頁",
             "點擊可移動場所名稱",
             "點擊移動按鈕"
-        ]:
+        ]
+        
+        for event_name in teleport_events:
             if event_name in self.event_frames:
                 self.event_frames[event_name].record_btn.config(state=state)
         self.save_config()
