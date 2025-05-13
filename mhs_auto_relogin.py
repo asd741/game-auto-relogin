@@ -14,6 +14,7 @@ import socket
 import copy
 import psutil
 import sys
+import traceback
 
 # 新的、符合您提供JSON結構的預設配置常量
 EXACT_DEFAULT_CONFIG = {
@@ -23,10 +24,10 @@ EXACT_DEFAULT_CONFIG = {
     "login_config": {
         "events": {
             "若登入失敗的確認按鈕(非必填)": { "coords": [973, 602], "wait_time": 10 },
-            "點擊二次密碼(第一位)": { "coords": [944, 537], "wait_time": 1 },
-            "點擊二次密碼(第三位)": { "coords": [944, 537], "wait_time": 1 },
-            "點擊二次密碼(第二位)": { "coords": [944, 537], "wait_time": 1 },
-            "點擊二次密碼(第四位)": { "coords": [944, 537], "wait_time": 1 },
+            "點擊二次密碼(第1位)": { "coords": [944, 537], "wait_time": 1 },
+            "點擊二次密碼(第2位)": { "coords": [944, 537], "wait_time": 1 },
+            "點擊二次密碼(第3位)": { "coords": [944, 537], "wait_time": 1 },
+            "點擊二次密碼(第4位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼確認按鈕": { "coords": [951, 571], "wait_time": 5 },
             "點擊伺服器": { "coords": [954, 422], "wait_time": 15 },
             "點擊分流": { "coords": [944, 420], "wait_time": 5 },
@@ -55,12 +56,6 @@ EXACT_DEFAULT_CONFIG = {
     }
 }
 
-GAME_WINDOW_TITLE = EXACT_DEFAULT_CONFIG["game_window_title"]
-GAME_PROCESS_NAME = EXACT_DEFAULT_CONFIG["game_process_name"]
-
-# 移除了舊的 LOGIN_CONFIG, TELEPORT_CONFIG, TRAINING_CONFIG 全域變數定義
-# 因為它們的功能已被 EXACT_DEFAULT_CONFIG 取代
-
 class MHSAutoReloginApp:
     def __init__(self, root):
         self.root = root
@@ -69,6 +64,7 @@ class MHSAutoReloginApp:
         
         # 運行狀態
         self.is_running = False
+        self.is_relogining = False # 新增：用於追蹤是否正在重連
         self.relogin_thread = None
         self.recording_event = None
         self.record_target = None
@@ -206,7 +202,7 @@ class MHSAutoReloginApp:
             os.makedirs(os.path.dirname(target_file), exist_ok=True)
 
             if os.path.exists(target_file):
-                self.log(f"配置文件 {target_file} 存在，將讀取並合併後保存。")
+                # self.log(f"配置文件存在，將讀取並合併後保存。")
                 try:
                     with open(target_file, 'r', encoding='utf-8') as f:
                         current_config_content = json.load(f)
@@ -234,7 +230,7 @@ class MHSAutoReloginApp:
             
             with open(target_file, 'w', encoding='utf-8') as f:
                 json.dump(config_to_save, f, indent=4, ensure_ascii=False)
-            self.log(f"配置已成功保存到 {target_file}")
+            self.log(f"配置已成功保存")
             return True # 表示保存成功
 
         except Exception as e:
@@ -422,10 +418,10 @@ class MHSAutoReloginApp:
         info_frame.pack(fill=tk.X, pady=5)
         
         ttk.Label(info_frame, text="遊戲窗口標題:").grid(row=0, column=0, sticky=tk.W, pady=2)
-        ttk.Label(info_frame, text=GAME_WINDOW_TITLE).grid(row=0, column=1, sticky=tk.W, pady=2)
+        ttk.Label(info_frame, text=self.config.get("game_window_title", "墨香 Online")).grid(row=0, column=1, sticky=tk.W, pady=2)
         
         ttk.Label(info_frame, text="遊戲進程名稱:").grid(row=1, column=0, sticky=tk.W, pady=2)
-        ttk.Label(info_frame, text=GAME_PROCESS_NAME).grid(row=1, column=1, sticky=tk.W, pady=2)
+        ttk.Label(info_frame, text=self.config.get("game_process_name", "MSMain_L.exe")).grid(row=1, column=1, sticky=tk.W, pady=2)
         
         return info_frame
     
@@ -528,7 +524,7 @@ class MHSAutoReloginApp:
             self.record_window.after(1000, self.update_mouse_position)
             
         except Exception as e:
-            self.log(f"更新滑鼠座標失敗: {str(e)}")
+            self.log(f"更新滑鼠座標失敗: {e}")
             
     def use_current_mouse_position(self):
         """使用目前滑鼠座標填充輸入框"""
@@ -641,12 +637,12 @@ class MHSAutoReloginApp:
             self.log(f"記錄座標失敗: {e}")
             import traceback
             self.log(traceback.format_exc())
-        
-        # 解除綁定並重置狀態
-        self.root.unbind('<Button-1>')
-        self.root.unbind('<Escape>')
-        self.recording_event = None
-        self.status_var.set("就緒")
+        finally:
+            # 解除綁定並重置狀態
+            self.root.unbind('<Button-1>')
+            self.root.unbind('<Escape>')
+            self.recording_event = None
+            self.status_var.set("就緒")
         
     def cancel_recording(self, event=None):
         """取消座標記錄"""
@@ -662,6 +658,13 @@ class MHSAutoReloginApp:
         """創建遊戲資訊框架"""
         info_frame = ttk.LabelFrame(parent, text="遊戲資訊", padding=10)
         info_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(info_frame, text="遊戲窗口標題:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        ttk.Label(info_frame, text=self.config.get("game_window_title", "墨香 Online")).grid(row=0, column=1, sticky=tk.W, pady=2)
+        
+        ttk.Label(info_frame, text="遊戲進程名稱:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        ttk.Label(info_frame, text=self.config.get("game_process_name", "MSMain_L.exe")).grid(row=1, column=1, sticky=tk.W, pady=2)
+        
         return info_frame
     
     def toggle_auto_relogin(self):
@@ -669,13 +672,8 @@ class MHSAutoReloginApp:
             self.stop_auto_relogin()
         else:
             self.start_auto_relogin()
-    
+ 
     def start_auto_relogin(self):
-        global GAME_WINDOW_TITLE, GAME_PROCESS_NAME, is_running
-        GAME_WINDOW_TITLE = self.config["game_window_title"]
-        GAME_PROCESS_NAME = self.config["game_process_name"]
-        is_running = True
-        
         self.is_running = True
         self.start_btn.config(text="停止自動重連")
         self.status_var.set("狀態: 自動重連運行中...")
@@ -686,20 +684,17 @@ class MHSAutoReloginApp:
         self.log("自動重連已啟動")
     
     def stop_auto_relogin(self):
-        global is_running
-        is_running = False
         self.is_running = False
         self.start_btn.config(text="啟動自動重連")
         self.status_var.set("狀態: 已停止")
         self.log("自動重連已停止")
     
     def run_main_loop(self):
-        global is_relogining
         while self.is_running:
-            if not is_relogining:
-                is_relogining = True
+            if not self.is_relogining: 
+                self.is_relogining = True 
                 self.auto_relogin()
-                is_relogining = False
+                self.is_relogining = False 
                 # if is_game_disconnected():
                 #     self.log("[偵測到斷線] 開始自動重連流程...")
                 #     is_relogining = True
@@ -713,7 +708,7 @@ class MHSAutoReloginApp:
             return
             
         if not self.check_prerequisites():
-            is_relogining = False  # 重設重連狀態
+            self.is_relogining = False  
             return
             
         self.prepare_for_relogin()
@@ -724,19 +719,14 @@ class MHSAutoReloginApp:
             # 使用短路邏輯，任一步驟失敗立即返回
             if not self.handle_disconnection():
                 return
-                
             if not self.handle_server_selection():
                 return
-                
             if not self.handle_login():
                 return
-                
             if not self.handle_secondary_password():
                 return
-                
             if not self.handle_character_selection():
                 return
-                
             if not self.handle_channel_selection():
                 return
                 
@@ -762,8 +752,9 @@ class MHSAutoReloginApp:
     def is_game_running(self):
         """檢查遊戲是否正在運行"""
         try:
+            game_process_name = self.config.get("game_process_name", "MSMain_L.exe")
             for proc in psutil.process_iter(['pid', 'name']):           
-                if proc.info['name'] == GAME_PROCESS_NAME:
+                if proc.info['name'] == game_process_name:
                     return True
             return False
         except Exception as e:
@@ -772,9 +763,8 @@ class MHSAutoReloginApp:
     
     def prepare_for_relogin(self):
         """準備自動重連"""
-        global is_relogining
-        is_relogining = True
-        self.is_running = True
+        self.is_relogining = True 
+        # self.is_running = True # is_running 應在 start_auto_relogin 中設置
         self.log("開始自動重連流程...")
     
     def handle_disconnection(self):
@@ -805,11 +795,7 @@ class MHSAutoReloginApp:
         """處理二次密碼"""
         if not self.is_running:
             return
-            
-        if not self.config.get("enable_secondary_password", False):
-            return
-            
-        self.log("輸入二次密碼...")
+        self.log("點擊二次密碼...")
         for i in range(1, 5):
             if not self.wait_and_click(f"點擊二次密碼(第{i}位)"):
                 return
@@ -837,9 +823,8 @@ class MHSAutoReloginApp:
     
     def cleanup_after_relogin(self):
         """重連完成後清理"""
-        global is_relogining
-        is_relogining = False
-        self.is_running = False
+        self.is_relogining = False 
+        # self.is_running = False # is_running 應在 stop_auto_relogin 中處理，或根據邏輯判斷
     
     def wait_and_click(self, event_name, config_type="login"):
         """等待並點擊指定事件"""
@@ -977,9 +962,10 @@ class MHSAutoReloginApp:
     def restore_game_window(self):
         """多重恢復遊戲窗口到前台"""
         max_attempts = 3
+        game_window_title = self.config.get("game_window_title", "墨香 Online")
         for attempt in range(1, max_attempts+1):
             try:
-                windows = gw.getWindowsWithTitle(self.config["game_window_title"])
+                windows = gw.getWindowsWithTitle(game_window_title)
                 if windows:
                     game_window = windows[0]
                     if game_window.isMinimized:
@@ -1022,8 +1008,9 @@ class MHSAutoReloginApp:
             if not self.is_game_running():
                 return True
                 
+            game_window_title = self.config.get("game_window_title", "墨香 Online")
             # 檢查斷線彈窗
-            hwnd = win32gui.FindWindow(None, GAME_WINDOW_TITLE)
+            hwnd = win32gui.FindWindow(None, game_window_title)
             if hwnd == 0:
                 return True
                 
