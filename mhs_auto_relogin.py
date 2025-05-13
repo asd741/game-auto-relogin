@@ -23,35 +23,35 @@ EXACT_DEFAULT_CONFIG = {
     "game_window_title": "墨香 Online-16年在地經營 官方正版授權",
     "login_config": {
         "events": {
-            "若登入失敗的確認按鈕(非必填)": { "coords": [973, 602], "wait_time": 10 },
+            "若登入失敗的確認按鈕(非必填)": { "coords": [973, 602], "wait_time": 1 },
             "點擊二次密碼(第1位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼(第2位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼(第3位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼(第4位)": { "coords": [944, 537], "wait_time": 1 },
-            "點擊二次密碼確認按鈕": { "coords": [951, 571], "wait_time": 5 },
-            "點擊伺服器": { "coords": [954, 422], "wait_time": 15 },
-            "點擊分流": { "coords": [944, 420], "wait_time": 5 },
-            "點擊斷線彈出框的確定按鈕": { "coords": [976, 602], "wait_time": 3 },
-            "點擊登入按鈕": { "coords": [954, 695], "wait_time": 5 },
-            "點擊角色暱稱": { "coords": [1809, 219], "wait_time": 5 },
-            "點擊進入遊戲按鈕": { "coords": [1815, 378], "wait_time": 5 }
+            "點擊二次密碼確認按鈕": { "coords": [951, 571], "wait_time": 1 },
+            "點擊伺服器": { "coords": [954, 422], "wait_time": 1 },
+            "點擊分流": { "coords": [944, 420], "wait_time": 1 },
+            "點擊斷線彈出框的確定按鈕": { "coords": [976, 602], "wait_time": 1 },
+            "點擊登入按鈕": { "coords": [954, 695], "wait_time": 1 },
+            "點擊角色暱稱": { "coords": [1809, 219], "wait_time": 1 },
+            "點擊進入遊戲按鈕": { "coords": [1815, 378], "wait_time": 1 }
         }
     },
     "os_type": "Windows",
     "teleport_config": {
         "events": {
-            "點擊奇門遁甲卷的分頁(I or II)": { "coords": [855, 659], "wait_time": 5 },
-            "點擊移動場所名稱": { "coords": [940, 581], "wait_time": 5 },
-            "點擊移動按鈕": { "coords": [952, 706], "wait_time": 5 }
+            "點擊奇門遁甲卷的分頁(I or II)": { "coords": [855, 659], "wait_time": 1 },
+            "點擊移動場所名稱": { "coords": [940, 581], "wait_time": 1 },
+            "點擊移動按鈕": { "coords": [952, 706], "wait_time": 1 }
         },
         "teleport_key": "不使用奇門遁甲卷" # 確保 teleport_key 在 teleport_config 中也有一份
     },
     "teleport_key": "不使用奇門遁甲卷",
     "training_config": {
         "events": {
-            "點擊地面讓角色走路": { "coords": [313, 454], "wait_time": 5 },
-            "點擊自動狩獵圖標": { "coords": [1392, 1061], "wait_time": 3 },
-            "點擊開始自動狩獵按鈕": { "coords": [732, 760], "wait_time": 3 }
+            "點擊地面讓角色走路": { "coords": [313, 454], "wait_time": 1 },
+            "點擊自動狩獵圖標": { "coords": [1392, 1061], "wait_time": 1 },
+            "點擊開始自動狩獵按鈕": { "coords": [732, 760], "wait_time": 1 }
         }
     }
 }
@@ -783,7 +783,7 @@ class MHSAutoReloginApp:
             return
             
         self.log("等待斷線確認...")
-        return self.wait_and_click("點擊斷線彈出框的確定按鈕")
+        return self.wait_and_click("點擊斷線彈出框的確定按鈕", event_group_key="login_config")
     
     def handle_server_selection(self):
         """處理伺服器選擇"""
@@ -791,7 +791,7 @@ class MHSAutoReloginApp:
             return
             
         self.log("點擊伺服器...")
-        return self.wait_and_click("點擊伺服器")
+        return self.wait_and_click("點擊伺服器", event_group_key="login_config")
     
     def handle_login(self):
         """處理登入按鈕"""
@@ -799,7 +799,7 @@ class MHSAutoReloginApp:
             return
             
         self.log("點擊登入按鈕...")
-        return self.wait_and_click("點擊登入按鈕")
+        return self.wait_and_click("點擊登入按鈕", event_group_key="login_config")
     
     def handle_secondary_password(self):
         """處理二次密碼"""
@@ -807,9 +807,9 @@ class MHSAutoReloginApp:
             return
         self.log("點擊二次密碼...")
         for i in range(1, 5):
-            if not self.wait_and_click(f"點擊二次密碼(第{i}位)"):
+            if not self.wait_and_click(f"點擊二次密碼(第{i}位)", event_group_key="login_config"):
                 return
-        return self.wait_and_click("點擊二次密碼確認按鈕")
+        return self.wait_and_click("點擊二次密碼確認按鈕", event_group_key="login_config")
     
     def handle_character_selection(self):
         """處理角色選擇"""
@@ -817,19 +817,19 @@ class MHSAutoReloginApp:
             return
             
         self.log("點擊角色暱稱...")
-        if not self.wait_and_click("點擊角色暱稱"):
+        if not self.wait_and_click("點擊角色暱稱", event_group_key="login_config"):
             return
-        return self.wait_and_click("點擊進入遊戲按鈕")
+        return self.wait_and_click("點擊進入遊戲按鈕", event_group_key="login_config")
     
     def handle_channel_selection(self):
         """處理頻道選擇"""
         if not self.is_running:
             return False #明確返回布林值
         self.log("點擊分流...")
-        if not self.wait_and_click("點擊分流"):
+        if not self.wait_and_click("點擊分流", event_group_key="login_config"):
             return False
         self.log("點擊進入遊戲按鈕...") # 假設點擊分流後是點擊確認/進入遊戲按鈕
-        if not self.wait_and_click("點擊進入遊戲按鈕"):
+        if not self.wait_and_click("點擊進入遊戲按鈕", event_group_key="login_config"):
             return False
         return True # 所有步驟成功
 
@@ -844,15 +844,15 @@ class MHSAutoReloginApp:
 
         if teleport_key == "不使用奇門遁甲卷":
             self.log("未設定奇門遁甲卷快捷鍵或設定為不使用，跳過傳送。")
-            return True # 成功跳過，因為不需要執行
+            return True 
 
         self.log(f"準備使用快捷鍵 {teleport_key} 開啟奇門遁甲卷...")
         try:
             if teleport_key.lower() in [f'f{i}' for i in range(1, 13)]:
                 pydirectinput.press(teleport_key.lower())
-                first_teleport_event_config = teleport_config.get("events", {}).get("點擊奇門遁甲卷的分頁(I or II)", {})
-                time.sleep(first_teleport_event_config.get("wait_time", 3)) # 預設等待3秒讓卷軸開啟
                 self.log(f"已按下快捷鍵 {teleport_key} 並等待卷軸開啟。")
+                first_teleport_event_config = teleport_config.get("events", {}).get("點擊奇門遁甲卷的分頁(I or II)", {})
+                time.sleep(first_teleport_event_config.get("wait_time", 1)) # 建議保留預設值 
             else:
                 self.log(f"警告: 不支援的快捷鍵 {teleport_key}。請在設定檔中設定 F1-F12 之一或 '不使用奇門遁甲卷'")
                 return False
@@ -862,17 +862,17 @@ class MHSAutoReloginApp:
             return False
 
         self.log("開始執行奇門遁甲卷傳送的點擊操作...")
-        if not self.wait_and_click("點擊奇門遁甲卷的分頁(I or II)"): return False
-        if not self.wait_and_click("點擊移動場所名稱"): return False
-        if not self.wait_and_click("點擊移動按鈕"): return False
+        if not self.wait_and_click("點擊奇門遁甲卷的分頁(I or II)", event_group_key="teleport_config"): return False
+        if not self.wait_and_click("點擊移動場所名稱", event_group_key="teleport_config"): return False
+        if not self.wait_and_click("點擊移動按鈕", event_group_key="teleport_config"): return False
         
         self.log("執行傳送後操作：點擊分流與確認...")
-        if not self.wait_and_click("點擊奇門遁甲卷後的分流"): return False
-        if not self.wait_and_click("點擊奇門遁甲卷後的分流確認"): return False
+        # 假設這些事件也在 teleport_config 下，如果不是，請調整 event_group_key
+        if not self.wait_and_click("點擊奇門遁甲卷後的分流", event_group_key="teleport_config"): return False
+        if not self.wait_and_click("點擊奇門遁甲卷後的分流確認", event_group_key="teleport_config"): return False
         
         self.log("奇門遁甲卷傳送流程成功完成。")
         return True
-
     def handle_auto_hunting(self):
         """處理自動狩獵流程"""
         if not self.is_running:
@@ -880,9 +880,9 @@ class MHSAutoReloginApp:
             return False
 
         self.log("開始執行自動狩獵的點擊操作...")
-        if not self.wait_and_click("點擊地面讓角色走路"): return False
-        if not self.wait_and_click("點擊自動狩獵圖標"): return False
-        if not self.wait_and_click("點擊開始自動狩獵按鈕"): return False
+        if not self.wait_and_click("點擊地面讓角色走路", event_group_key="training_config"): return False
+        if not self.wait_and_click("點擊自動狩獵圖標", event_group_key="training_config"): return False
+        if not self.wait_and_click("點擊開始自動狩獵按鈕", event_group_key="training_config"): return False
         
         self.log("自動狩獵已成功啟動。")
         return True
@@ -892,41 +892,61 @@ class MHSAutoReloginApp:
         self.is_relogining = False 
         # self.is_running = False # is_running 應在 stop_auto_relogin 中處理，或根據邏輯判斷
     
-    def wait_and_click(self, event_name, config_type="login"):
-        """等待並點擊指定事件"""
+    def wait_and_click(self, event_name, event_group_key=None):
+        """等待並點擊指定事件的座標，可指定事件組。 event_group_key 是必需的。"""
         if not self.is_running:
+            self.log(f"錯誤: is_running 為 False，無法執行點擊事件 '{event_name}'。")
             return False
-            
-        # 統一讀取配置結構
-        config = self.config.get(f"{config_type}_config", {})
-        if not config:
-            raise ValueError(f"缺少 {config_type}_config 配置節點")
-            
-        events = config.get("events", {})
-        if not events:
-            raise ValueError(f"{config_type}_config 中缺少 events 配置")
-            
-        event_config = events.get(event_name)
-        if event_config is None:
-            raise ValueError(f"events 中缺少 {event_name} 事件配置")
-        
-        if "wait_time" not in event_config:
-            raise ValueError(f"{event_name} 事件缺少 wait_time 配置")
-        if "coords" not in event_config:
-            raise ValueError(f"{event_name} 事件缺少 coords 配置")
-            
-        wait_sec = event_config["wait_time"]
-        coords = event_config["coords"]
-        
-        time.sleep(wait_sec)
-        if not self.is_running:
+
+        if event_group_key is None:
+            self.log(f"錯誤: 呼叫 wait_and_click 時，事件 '{event_name}' 未提供必需的 event_group_key 參數。")
             return False
+
+        event_config_source = None
+        source_description = ""
+
         try:
-            self.click_game(*coords)
-            self.log(f"已點擊 {event_name} ({coords[0]}, {coords[1]})")
+            # 從指定的 group_key (例如 'teleport_config') 下的 'events' 找
+            group_config = self.config.get(event_group_key, {})
+            if not isinstance(group_config, dict):
+                self.log(f"錯誤: 設定檔中 '{event_group_key}' 不是一個有效的字典/物件。")
+                return False
+            event_config_source = group_config.get("events")
+            if event_config_source is None: 
+                self.log(f"錯誤: 在設定檔中事件組 '{event_group_key}' 下找不到 'events' 配置。")
+                return False
+            source_description = f"事件組 '{event_group_key}'"
+            
+            if not isinstance(event_config_source, dict):
+                self.log(f"錯誤: 來自 {source_description} 的事件配置不是一個有效的字典/物件。")
+                return False
+
+            event_details = event_config_source.get(event_name)
+            if not event_details:
+                self.log(f"錯誤: 在 {source_description} 中缺少 '{event_name}' 事件配置。")
+                return False
+
+            coords = event_details.get("coords")
+            wait_time = event_details.get("wait_time", 1)  # 如果沒有wait_time，預設等待1秒
+
+            if not coords or len(coords) != 2:
+                self.log(f"錯誤: 事件 '{event_name}' (來自 {source_description}) 的座標配置不正確或遺失。")
+                return False
+
+            self.log(f"執行事件: '{event_name}' (來自 {source_description}) - 等待 {wait_time} 秒...")
+            time.sleep(wait_time)
+
+            self.log(f"點擊座標: {coords}")
+            pydirectinput.click(coords[0], coords[1])
             return True
+        except KeyError as e:
+            self.log(f"點擊事件 '{event_name}' (來自 {source_description}) 失敗: 遺失鍵 {e}。請檢查設定檔。")
+            self.debug_log(traceback.format_exc())
+            return False
         except Exception as e:
-            raise RuntimeError(f"點擊 {event_name} 失敗: {str(e)}")
+            self.log(f"點擊事件 '{event_name}' (來自 {source_description}) 時發生未預期錯誤: {e}")
+            self.debug_log(traceback.format_exc())
+            return False
     
     def log(self, message):
         timestamp = time.strftime("%H:%M:%S")

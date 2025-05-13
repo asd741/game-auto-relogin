@@ -9,7 +9,7 @@
                     973,
                     602
                 ],
-                "wait_time": 10
+                "wait_time": 1
             },
             "點擊二次密碼(第1位)": {
                 "coords": [
@@ -44,49 +44,49 @@
                     951,
                     571
                 ],
-                "wait_time": 5
+                "wait_time": 1
             },
             "點擊伺服器": {
                 "coords": [
                     954,
                     422
                 ],
-                "wait_time": 15
+                "wait_time": 1
             },
             "點擊分流": {
                 "coords": [
                     944,
                     420
                 ],
-                "wait_time": 5
+                "wait_time": 1
             },
             "點擊斷線彈出框的確定按鈕": {
                 "coords": [
                     976,
                     602
                 ],
-                "wait_time": 3
+                "wait_time": 1
             },
             "點擊登入按鈕": {
                 "coords": [
                     954,
                     695
                 ],
-                "wait_time": 5
+                "wait_time": 1
             },
             "點擊角色暱稱": {
                 "coords": [
                     1809,
                     219
                 ],
-                "wait_time": 5
+                "wait_time": 1
             },
             "點擊進入遊戲按鈕": {
                 "coords": [
                     1815,
                     378
                 ],
-                "wait_time": 5
+                "wait_time": 1
             }
         }
     },
@@ -98,21 +98,21 @@
                     855,
                     659
                 ],
-                "wait_time": 5
+                "wait_time": 1
             },
             "點擊移動場所名稱": {
                 "coords": [
                     940,
                     581
                 ],
-                "wait_time": 5
+                "wait_time": 1
             },
             "點擊移動按鈕": {
                 "coords": [
                     952,
                     706
                 ],
-                "wait_time": 5
+                "wait_time": 1
             }
         },
         "teleport_key": "不使用奇門遁甲卷"
@@ -125,21 +125,21 @@
                     313,
                     454
                 ],
-                "wait_time": 5
+                "wait_time": 1
             },
             "點擊自動狩獵圖標": {
                 "coords": [
                     1392,
                     1061
                 ],
-                "wait_time": 3
+                "wait_time": 1
             },
             "點擊開始自動狩獵按鈕": {
                 "coords": [
                     732,
                     760
                 ],
-                "wait_time": 3
+                "wait_time": 1
             }
         }
     }
