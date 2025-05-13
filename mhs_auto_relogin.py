@@ -826,42 +826,76 @@ class MHSAutoReloginApp:
                 self.event_frames[event_name].record_btn.config(state=state)
         self.save_config()
 
-    def update_wait_time(self, event_type, event_name, wait_time):
-        """更新操作前等待時間"""
-        self.log(f"正在更新 {event_type}.{event_name} 的操作前等待時間為: {wait_time}")
+    def execute_event(self, event_name, event_config):
+        """執行事件並嚴格遵守等待時間"""
+        # 獲取等待時間（默認5秒）
+        wait_sec = next((int(k.split()[1]) for k in event_config 
+                       if k.startswith("操作前等待")), 5)
         
-        # 移除所有舊的等待時間鍵
-        if event_type == "login":
-            current_config = self.config["login_config"]["events"][event_name]
-        elif event_type == "teleport":
-            current_config = self.config["teleport_config"]["events"][event_name]
-        elif event_type == "training":
-            current_config = self.config["training_config"]["events"][event_name]
-        else:
-            self.log(f"未知的事件類型: {event_type}")
-            return
+        # 分段等待以便及時響應停止指令
+        start = time.time()
+        while time.time() - start < wait_sec:
+            if not self.is_running:
+                return False
+            time.sleep(0.1)  # 短間隔檢查
             
-        # 移除所有舊的等待時間鍵
-        for key in list(current_config.keys()):
-            if key.startswith("操作前等待"):
-                del current_config[key]
+        # 執行點擊操作
+        if self.is_running:
+            x, y = event_config["coords"]
+            self.click_game(x, y)
+            return True
+        return False
+
+    def stop_relogin(self):
+        """強制停止所有操作"""
+        self.is_running = False
         
-        # 添加新的等待時間
-        current_config[f"操作前等待 {wait_time} 秒"] = True
+        # 確保執行緒停止
+        if self.relogin_thread and self.relogin_thread.is_alive():
+            try:
+                self.relogin_thread.join(timeout=2.0)
+                if self.relogin_thread.is_alive():
+                    self.log("警告：執行緒未正常結束，強制終止中")
+            except Exception as e:
+                self.log(f"停止執行緒時出錯: {e}")
         
-        # 保存配置
-        self.save_config()
-    
+        self.log("已完全停止自動重連")
+        self.update_ui_state()
+
+    def restore_game_window(self):
+        """多重恢復遊戲窗口到前台"""
+        max_attempts = 3
+        for attempt in range(1, max_attempts+1):
+            try:
+                windows = gw.getWindowsWithTitle(self.config["game_window_title"])
+                if windows:
+                    game_window = windows[0]
+                    if game_window.isMinimized:
+                        self.debug_log(f'還原窗口 (嘗試 {attempt}/{max_attempts})')
+                        game_window.restore()
+                        time.sleep(1)
+                        self.debug_log(f'聚焦窗口 (嘗試 {attempt}/{max_attempts})')
+                    game_window.activate()
+                    time.sleep(0.5)  # 確保窗口完成聚焦
+                    return True
+            except Exception as e:
+                self.debug_log(f"恢復窗口失敗 (嘗試 {attempt}/{max_attempts}): {e}")
+                time.sleep(1)
+        return False
+
     def click_game(self, x, y, clicks=1):
-        debug_log(f"點擊位置: ({x}, {y})")
+        """點擊遊戲窗口指定位置"""
+        if not self.restore_game_window():
+            self.log("警告：無法聚焦遊戲窗口")
+            return False
+        
         try:
-            for _ in range(clicks):
-                pydirectinput.moveTo(x, y)
-                pydirectinput.mouseDown()
-                time.sleep(0.05)
-                pydirectinput.mouseUp()
+            pyautogui.click(x, y, clicks=clicks)
+            time.sleep(0.3)  # 點擊後固定等待時間
+            return True
         except Exception as e:
-            debug_log(f"點擊失敗: {e}")
+            self.log(f"點擊遊戲失敗: {e}")
+            return False
 
 def click_game(x, y, clicks=1):
     debug_log(f"點擊位置: ({x}, {y})")
