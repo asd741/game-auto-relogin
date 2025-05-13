@@ -1130,7 +1130,7 @@ class MHSAutoReloginApp:
                         self.auto_relogin()
                     finally:
                         self.is_relogining = False # 使用實例變數，並確保重設
-            time.sleep(1)  # 基礎檢查間隔
+            time.sleep(30)  # 基礎檢查間隔
 if __name__ == "__main__":
     root = tk.Tk()
     app = MHSAutoReloginApp(root)
