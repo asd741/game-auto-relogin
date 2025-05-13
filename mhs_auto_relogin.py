@@ -730,10 +730,20 @@ class MHSAutoReloginApp:
             if not self.handle_channel_selection():
                 return
                 
-            self.log("重連成功完成!")
+            self.log("基本登入與頻道選擇完成。接下來執行傳送和狩獵流程...")
+            
+            if not self.handle_teleportation():
+                self.log("奇門遁甲卷傳送失敗，中止自動重連。")
+                return 
+            
+            if not self.handle_auto_hunting():
+                self.log("自動狩獵啟動失敗，中止自動重連。")
+                return 
+
+            self.log("自動重連流程 (包括傳送與狩獵) 已全部成功完成！")
             
         except Exception as e:
-            self.log(f"重連過程中發生錯誤: {str(e)}")
+            self.log(f"自動重連過程中發生未預期錯誤: {str(e)}")
             self.debug_log(traceback.format_exc())
         finally:
             self.cleanup_after_relogin()
@@ -812,15 +822,71 @@ class MHSAutoReloginApp:
         return self.wait_and_click("點擊進入遊戲按鈕")
     
     def handle_channel_selection(self):
-        """處理分流選擇"""
+        """處理頻道選擇"""
         if not self.is_running:
-            return
-            
+            return False #明確返回布林值
         self.log("點擊分流...")
         if not self.wait_and_click("點擊分流"):
-            return
-        return self.wait_and_click("點擊登入按鈕")
-    
+            return False
+        self.log("點擊進入遊戲按鈕...") # 假設點擊分流後是點擊確認/進入遊戲按鈕
+        if not self.wait_and_click("點擊進入遊戲按鈕"):
+            return False
+        return True # 所有步驟成功
+
+    def handle_teleportation(self):
+        """處理奇門遁甲卷傳送"""
+        if not self.is_running:
+            self.log("錯誤: is_running 為 False，無法執行傳送。")
+            return False
+
+        teleport_config = self.config.get("teleport_config", {})
+        teleport_key = teleport_config.get("teleport_key", "不使用奇門遁甲卷")
+
+        if teleport_key == "不使用奇門遁甲卷":
+            self.log("未設定奇門遁甲卷快捷鍵或設定為不使用，跳過傳送。")
+            return True # 成功跳過，因為不需要執行
+
+        self.log(f"準備使用快捷鍵 {teleport_key} 開啟奇門遁甲卷...")
+        try:
+            if teleport_key.lower() in [f'f{i}' for i in range(1, 13)]:
+                pydirectinput.press(teleport_key.lower())
+                first_teleport_event_config = teleport_config.get("events", {}).get("點擊奇門遁甲卷的分頁(I or II)", {})
+                time.sleep(first_teleport_event_config.get("wait_time", 3)) # 預設等待3秒讓卷軸開啟
+                self.log(f"已按下快捷鍵 {teleport_key} 並等待卷軸開啟。")
+            else:
+                self.log(f"警告: 不支援的快捷鍵 {teleport_key}。請在設定檔中設定 F1-F12 之一或 '不使用奇門遁甲卷'")
+                return False
+        except Exception as e:
+            self.log(f"按下快捷鍵 {teleport_key} 時發生錯誤: {e}")
+            self.debug_log(traceback.format_exc())
+            return False
+
+        self.log("開始執行奇門遁甲卷傳送的點擊操作...")
+        if not self.wait_and_click("點擊奇門遁甲卷的分頁(I or II)"): return False
+        if not self.wait_and_click("點擊移動場所名稱"): return False
+        if not self.wait_and_click("點擊移動按鈕"): return False
+        
+        self.log("執行傳送後操作：點擊分流與確認...")
+        if not self.wait_and_click("點擊奇門遁甲卷後的分流"): return False
+        if not self.wait_and_click("點擊奇門遁甲卷後的分流確認"): return False
+        
+        self.log("奇門遁甲卷傳送流程成功完成。")
+        return True
+
+    def handle_auto_hunting(self):
+        """處理自動狩獵流程"""
+        if not self.is_running:
+            self.log("錯誤: is_running 為 False，無法執行自動狩獵。")
+            return False
+
+        self.log("開始執行自動狩獵的點擊操作...")
+        if not self.wait_and_click("點擊地面讓角色走路"): return False
+        if not self.wait_and_click("點擊自動狩獵圖標"): return False
+        if not self.wait_and_click("點擊開始自動狩獵按鈕"): return False
+        
+        self.log("自動狩獵已成功啟動。")
+        return True
+
     def cleanup_after_relogin(self):
         """重連完成後清理"""
         self.is_relogining = False 
