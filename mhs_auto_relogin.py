@@ -13,6 +13,7 @@ import win32con
 import socket
 import copy
 import psutil
+import sys
 
 # 新的、符合您提供JSON結構的預設配置常量
 EXACT_DEFAULT_CONFIG = {
@@ -75,8 +76,9 @@ class MHSAutoReloginApp:
         # 事件框架字典
         self.event_frames = {}
         
-        # 配置文件路徑
-        self.config_file = "mhs_config.json"
+        # 確保 script_dir 是絕對路徑
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.config_file = os.path.join(script_dir, "mhs_config.json")
         
         # 創建主要面板
         main_panel, left_panel, right_panel = self.create_main_panels()
@@ -156,48 +158,90 @@ class MHSAutoReloginApp:
     
     def load_config(self):
         """載入配置文件"""
-        if not os.path.exists(self.config_file):
-            return self.load_default_config()
-            
         try:
-            with open(self.config_file, "r", encoding="utf-8") as f:
-                return self.merge_config(self.load_default_config(), json.load(f))
-        except:
-            return self.load_default_config()
-    
-    def save_config(self):
-        """嚴格模式保存配置，只更新現有key的value"""
-        try:
-            # 先讀取當前配置文件內容
-            with open(self.config_file, 'r', encoding='utf-8') as f:
-                current_config = json.load(f)
-            
-            # 深度合併配置（只更新現有key）
-            def deep_update(target, source):
-                for key in list(target.keys()):
-                    if key in source:
-                        if isinstance(target[key], dict) and isinstance(source[key], dict):
-                            deep_update(target[key], source[key])
-                        else:
-                            target[key] = source[key]
-            
-            # 執行嚴格更新
-            deep_update(current_config, self.config)
-            
-            # 寫回文件
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(current_config, f, 
-                         indent=4, 
-                         ensure_ascii=False,
-                         sort_keys=True)
+            if not os.path.exists(self.config_file):
+                self.log(f"配置文件 {self.config_file} 不存在，將創建新的預設配置。")
+                default_config = self.load_default_config()
+                self.config = default_config # 先將 self.config 設為預設值
                 
-            self.log("配置已保存")
-            return True
+                # 現在 save_config 應該能正確處理檔案不存在的情況
+                if self.save_config(): # 嘗試保存這個預設配置到 self.config_file
+                    self.log(f"預設配置已成功創建並保存到 {self.config_file}")
+                else:
+                    self.log(f"警告: 創建預設配置文件 {self.config_file} 失敗。程式將使用記憶體中的預設配置。")
+                return default_config # 返回預設配置
             
+            # 如果文件存在，正常讀取和合併
+            self.log(f"從 {self.config_file} 載入配置")
+            with open(self.config_file, 'r', encoding='utf-8') as f:
+                loaded_config = json.load(f)
+            
+            default_for_merge = self.load_default_config()
+            merged_config = self.merge_config(default_for_merge, loaded_config)
+            self.config = merged_config # 更新當前運行的配置
+            self.log("配置載入並合併完成。")
+            return merged_config
+
+        except json.JSONDecodeError:
+            self.log(f"錯誤: 配置文件 {self.config_file} 格式損壞。將載入預設配置並嘗試覆蓋。")
+            default_config = self.load_default_config()
+            self.config = default_config
+            self.save_config() # 嘗試用預設配置覆蓋損壞的檔案
+            return default_config
         except Exception as e:
-            self.log(f"保存配置失敗: {str(e)}")
-            return False
-    
+            self.log(f"載入配置時發生錯誤: {e}. 將載入預設配置。")
+            default_config = self.load_default_config()
+            self.config = default_config
+            # 這裡可以選擇是否在載入失敗時也嘗試保存一次預設配置
+            # self.save_config()
+            return default_config
+
+    def save_config(self, filepath_override=None):
+        """保存當前配置到文件。可以接受一個覆蓋的路徑參數用於測試。"""
+        target_file = filepath_override if filepath_override else self.config_file
+        current_config_content = {} # 初始化為空字典
+
+        try:
+            # 確保目標目錄存在
+            os.makedirs(os.path.dirname(target_file), exist_ok=True)
+
+            if os.path.exists(target_file):
+                self.log(f"配置文件 {target_file} 存在，將讀取並合併後保存。")
+                try:
+                    with open(target_file, 'r', encoding='utf-8') as f:
+                        current_config_content = json.load(f)
+                except json.JSONDecodeError:
+                    self.log(f"警告: 配置文件 {target_file} 格式錯誤，將使用當前程序配置覆蓋。")
+                    # 如果JSON解碼失敗，current_config_content 保持為空，後面會用 self.config 完全覆蓋
+                except Exception as e:
+                    self.log(f"讀取配置文件 {target_file} 時發生未知錯誤: {e}，將使用當前程序配置覆蓋。")
+                    # 其他讀取錯誤，也用 self.config 覆蓋
+            else:
+                self.log(f"配置文件 {target_file} 不存在，將直接使用當前程序配置創建。")
+                # 如果檔案不存在，current_config_content 保持為空，意味著 self.config 將成為檔案的全部內容
+
+            # 準備要寫入的內容
+            # 如果 current_config_content 非空 (即成功讀取了舊配置)，則進行合併
+            # 否則 (檔案不存在或讀取失敗)，直接使用 self.config
+            if current_config_content: 
+                # 深度合併配置（只更新現有key），以 self.config 為主，補充到 current_config_content
+                # 這裡的邏輯是，UI上所做的更改 (self.config) 應該優先於檔案中的舊值
+                # 我們創建一個新的字典來保存合併結果，避免修改 self.config
+                config_to_save = copy.deepcopy(current_config_content) # 從檔案內容開始
+                self.deep_merge_dicts(self.config, config_to_save) # 將 self.config 的更改合併進去
+            else:
+                config_to_save = copy.deepcopy(self.config) # 直接使用當前的程式配置
+            
+            with open(target_file, 'w', encoding='utf-8') as f:
+                json.dump(config_to_save, f, indent=4, ensure_ascii=False)
+            self.log(f"配置已成功保存到 {target_file}")
+            return True # 表示保存成功
+
+        except Exception as e:
+            self.log(f"保存配置到 {target_file} 失敗: {e}")
+            print(f"[ERROR] 保存配置到 {target_file} 失敗: {e}", file=sys.stderr)
+            return False # 表示保存失敗
+
     def create_main_panels(self):
         """創建主要面板"""
         main_panel = self.create_main_frame()
