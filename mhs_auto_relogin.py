@@ -1,60 +1,64 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
-import threading
+from tkinter import ttk, messagebox, simpledialog, scrolledtext
 import json
 import os
-import psutil
-import pyautogui
-import pygetwindow as gw
-import pydirectinput
 import time
+import threading
+import pydirectinput
+import pyautogui
 import ctypes
-import keyboard
-import traceback
+import pygetwindow as gw
 import win32gui
 import win32con
 import socket
+import copy
+import psutil
 
-# 全局變量
-GAME_WINDOW_TITLE = "墨香 Online-16年在地經營 官方正版授權"
-GAME_PROCESS_NAME = "MHClient-Connect.exe"
-is_relogining = False
-is_running = False
-DEBUG = True
-
-# 事件配置 (繁體中文顯示)
-LOGIN_CONFIG = {
-    "點擊斷線彈出框的確定按鈕": {"wait_time": 30, "coords": [976, 602]},
-    "點擊伺服器": {"wait_time": 15, "coords": [954, 422]},
-    "點擊登入按鈕": {"wait_time": 10, "coords": [953, 689]},
-    "若登入失敗的確認按鈕(非必填)": {"wait_time": 10, "coords": [973, 602]},
-    "點擊二次密碼(第一位)": {"wait_time": 1, "coords": [944, 537]},
-    "點擊二次密碼(第二位)": {"wait_time": 1, "coords": [944, 537]},
-    "點擊二次密碼(第三位)": {"wait_time": 1, "coords": [944, 537]},
-    "點擊二次密碼(第四位)": {"wait_time": 1, "coords": [944, 537]},
-    "點擊二次密碼確認按鈕": {"wait_time": 5, "coords": [951, 571]},
-    "點擊角色暱稱": {"wait_time": 5, "coords": [1809, 219]},
-    "點擊進入遊戲按鈕": {"wait_time": 5, "coords": [1815, 378]},
-    "點擊分流": {"wait_time": 5, "coords": [944, 420]},
-    "點擊登入按鈕": {"wait_time": 5, "coords": [954, 695]}
-}
-
-TELEPORT_CONFIG = {
+# 新的、符合您提供JSON結構的預設配置常量
+EXACT_DEFAULT_CONFIG = {
+    "game_env": "聊天優先",
+    "game_process_name": "MHClient-Connect.exe",
+    "game_window_title": "墨香 Online-16年在地經營 官方正版授權",
+    "login_config": {
+        "events": {
+            "若登入失敗的確認按鈕(非必填)": { "coords": [973, 602], "wait_time": 10 },
+            "點擊二次密碼(第一位)": { "coords": [944, 537], "wait_time": 1 },
+            "點擊二次密碼(第三位)": { "coords": [944, 537], "wait_time": 1 },
+            "點擊二次密碼(第二位)": { "coords": [944, 537], "wait_time": 1 },
+            "點擊二次密碼(第四位)": { "coords": [944, 537], "wait_time": 1 },
+            "點擊二次密碼確認按鈕": { "coords": [951, 571], "wait_time": 5 },
+            "點擊伺服器": { "coords": [954, 422], "wait_time": 15 },
+            "點擊分流": { "coords": [944, 420], "wait_time": 5 },
+            "點擊斷線彈出框的確定按鈕": { "coords": [976, 602], "wait_time": 3 },
+            "點擊登入按鈕": { "coords": [954, 695], "wait_time": 5 },
+            "點擊角色暱稱": { "coords": [1809, 219], "wait_time": 5 },
+            "點擊進入遊戲按鈕": { "coords": [1815, 378], "wait_time": 5 }
+        }
+    },
+    "os_type": "Windows",
+    "teleport_config": {
+        "events": {
+            "點擊奇門遁甲卷的分頁(I or II)": { "coords": [855, 659], "wait_time": 5 },
+            "點擊移動場所名稱": { "coords": [940, 581], "wait_time": 5 },
+            "點擊移動按鈕": { "coords": [952, 706], "wait_time": 5 }
+        },
+        "teleport_key": "不使用奇門遁甲卷" # 確保 teleport_key 在 teleport_config 中也有一份
+    },
     "teleport_key": "不使用奇門遁甲卷",
-    "events": {
-        "點擊奇門遁甲卷的分頁(I or II)": {"wait_time": 5, "coords": [855, 659]},
-        "點擊移動場所名稱": {"wait_time": 5, "coords": [940, 581]},
-        "點擊移動按鈕": {"wait_time": 5, "coords": [952, 706]}
+    "training_config": {
+        "events": {
+            "點擊地面讓角色走路": { "coords": [313, 454], "wait_time": 5 },
+            "點擊自動狩獵圖標": { "coords": [1392, 1061], "wait_time": 3 },
+            "點擊開始自動狩獵按鈕": { "coords": [732, 760], "wait_time": 3 }
+        }
     }
 }
 
-TRAINING_CONFIG = {
-    "events": {
-        "點擊地面讓角色走路": {"wait_time": 5, "coords": [313, 454]},
-        "點擊自動狩獵圖標": {"wait_time": 3, "coords": [1392, 1061]},
-        "點擊開始自動狩獵按鈕": {"wait_time": 3, "coords": [732, 760]},
-    }
-}
+GAME_WINDOW_TITLE = EXACT_DEFAULT_CONFIG["game_window_title"]
+GAME_PROCESS_NAME = EXACT_DEFAULT_CONFIG["game_process_name"]
+
+# 移除了舊的 LOGIN_CONFIG, TELEPORT_CONFIG, TRAINING_CONFIG 全域變數定義
+# 因為它們的功能已被 EXACT_DEFAULT_CONFIG 取代
 
 class MHSAutoReloginApp:
     def __init__(self, root):
@@ -93,76 +97,62 @@ class MHSAutoReloginApp:
         app = self
     
     def load_default_config(self):
-        return {
-            "game_window_title": GAME_WINDOW_TITLE,
-            "game_process_name": GAME_PROCESS_NAME,
-            "os_type": "Windows",
-            "game_env": "聊天優先",
-            "teleport_key": TELEPORT_CONFIG["teleport_key"],
-            "login_config": {"events": LOGIN_CONFIG},
-            "teleport_config": {"events": TELEPORT_CONFIG["events"]},
-            "training_config": {"events": TRAINING_CONFIG["events"]}
-        }
+        return copy.deepcopy(EXACT_DEFAULT_CONFIG)
         
     def merge_config(self, default, loaded):
         """合併預設配置與載入的配置"""
-        # 確保所有配置結構完整
-        loaded.setdefault("login_config", {})
-        loaded.setdefault("teleport_config", {"events": {}})
-        loaded.setdefault("training_config", {"events": {}})
+        # 確保頂層key存在
+        for key in default.keys():
+            if key not in loaded:
+                loaded[key] = copy.deepcopy(default[key]) # 如果顶层key不存在，则从默认配置深拷贝
+            elif isinstance(default[key], dict) and isinstance(loaded[key], dict):
+                # 如果是字典，遞歸合併
+                self.deep_merge_dicts(default[key], loaded[key])
+            # else loaded[key] 的值将被保留
+
+        # 特別處理 events，確保所有預設事件都存在，並且每個事件都有 coords 和 wait_time
+        for config_key in ["login_config", "teleport_config", "training_config"]:
+            if config_key in default and config_key in loaded:
+                default_events = default[config_key].get("events", {})
+                loaded_events = loaded[config_key].setdefault("events", {})
+
+                for event_name, default_event_data in default_events.items():
+                    if event_name not in loaded_events:
+                        loaded_events[event_name] = copy.deepcopy(default_event_data)
+                    else:
+                        # 如果事件已存在，確保它有 coords 和 wait_time
+                        loaded_events[event_name].setdefault("coords", default_event_data.get("coords", [0,0]))
+                        loaded_events[event_name].setdefault("wait_time", default_event_data.get("wait_time", 5))
+            elif config_key in default and config_key not in loaded: # 如果加載的配置中缺少整個config_key
+                 loaded[config_key] = copy.deepcopy(default[config_key])
         
-        self.merge_login_config(loaded)
-        self.merge_teleport_config(loaded)
-        self.merge_training_config(loaded)
-        
-        # 確保teleport_key存在
-        loaded.setdefault("teleport_key", TELEPORT_CONFIG["teleport_key"])
-        loaded["teleport_config"].setdefault("teleport_key", TELEPORT_CONFIG["teleport_key"])
-        
-        return loaded
-        
-    def merge_login_config(self, loaded):
-        for event_name, event_data in LOGIN_CONFIG.items():
-            if event_name not in loaded["login_config"]["events"]:
-                loaded["login_config"]["events"][event_name] = event_data
-            else:
-                self.ensure_event_defaults(loaded["login_config"]["events"][event_name], event_data)
-    
-    def merge_teleport_config(self, loaded):
-        for event_name, event_data in TELEPORT_CONFIG["events"].items():
-            if event_name not in loaded["teleport_config"]["events"]:
-                loaded["teleport_config"]["events"][event_name] = event_data
-            else:
-                self.ensure_event_defaults(loaded["teleport_config"]["events"][event_name], event_data)
-    
-    def merge_training_config(self, loaded):
-        for event_name, event_data in TRAINING_CONFIG["events"].items():
-            if event_name not in loaded["training_config"]["events"]:
-                loaded["training_config"]["events"][event_name] = event_data
-            else:
-                self.ensure_event_defaults(loaded["training_config"]["events"][event_name], event_data)
-    
-    def ensure_event_defaults(self, target, source):
-        """確保事件配置有預設值"""
-        # 查找源配置中的等待時間
-        wait_time = 5  # 預設等待時間
-        for key in source.keys():
-            if key.startswith("操作前等待"):
-                wait_time = int(key.split()[1])
-                break
-                
-        # 確保目標配置有等待時間
-        has_wait_time = False
-        for key in list(target.keys()):
-            if key.startswith("操作前等待"):
-                has_wait_time = True
-                break
-                
-        if not has_wait_time:
-            target[f"操作前等待 {wait_time} 秒"] = True
+        # 確保 teleport_key 在 teleport_config 和頂層都存在且一致
+        default_teleport_key = default.get("teleport_key", "不使用奇門遁甲卷")
+        loaded.setdefault("teleport_key", default_teleport_key)
+        if "teleport_config" in loaded:
+            loaded["teleport_config"].setdefault("teleport_key", default_teleport_key)
+        elif "teleport_config" in default: # 如果加載的配置沒有teleport_config，但預設有
+            loaded["teleport_config"] = copy.deepcopy(default["teleport_config"])
+            loaded["teleport_config"].setdefault("teleport_key", default_teleport_key)
             
-        # 確保有座標
-        target.setdefault("coords", source["coords"])
+        return loaded
+
+    def deep_merge_dicts(self, default_dict, user_dict):
+        """輔助函數：深度合併字典，優先使用 user_dict 的值"""
+        for key, default_value in default_dict.items():
+            if key not in user_dict:
+                user_dict[key] = copy.deepcopy(default_value)
+            elif isinstance(default_value, dict) and isinstance(user_dict.get(key), dict):
+                self.deep_merge_dicts(default_value, user_dict[key])
+            # 如果 user_dict[key] 已存在且不是字典（或 default_value 不是字典），則保留 user_dict[key] 的值
+
+    def ensure_event_defaults(self, target, source):
+        """確保事件配置有預設值，特別是 coords 和 wait_time"""
+        # 這個方法在新的 merge_config 邏輯下可能不再直接需要，
+        # 因為合併時會直接從 default_event_data 獲取並 setdefault。
+        # 但保留以防萬一其他地方調用。
+        target.setdefault("coords", source.get("coords", [0, 0]))
+        target.setdefault("wait_time", source.get("wait_time", 5))
     
     def load_config(self):
         """載入配置文件"""
@@ -201,7 +191,7 @@ class MHSAutoReloginApp:
                          ensure_ascii=False,
                          sort_keys=True)
                 
-            self.log("配置已保存（嚴格模式）")
+            self.log("配置已保存")
             return True
             
         except Exception as e:
@@ -350,26 +340,22 @@ class MHSAutoReloginApp:
                 event_data = {}
                 config["events"][event_name] = event_data
                 
-            # 確保事件配置有預設值
-            wait_time = 5  # 預設等待時間
-            for key in event_data.keys():
-                if key.startswith("操作前等待"):
-                    wait_time = int(key.split()[1])
-                    break
-            event_data.setdefault("wait_time", wait_time)
-            event_data.setdefault("coords", [0, 0])
-            
             frame = ttk.Frame(parent)
             frame.pack(fill=tk.X, pady=2)
             
             # 事件名稱
             ttk.Label(frame, text=event_name, width=25).pack(side=tk.LEFT, padx=2)
             
-            # 操作前等待時間
-            ttk.Label(frame, text="操作前等待(秒)").pack(side=tk.LEFT)
-            frame.wait_spin = ttk.Spinbox(frame, from_=1, to=300, width=5)
-            frame.wait_spin.pack(side=tk.LEFT, padx=2)
-            frame.wait_spin.set(wait_time)
+            # 等待時間 Spinbox
+            frame.wait_label = ttk.Label(frame, text="操作前等待(秒):")
+            frame.wait_label.pack(side=tk.LEFT, padx=(0, 5))
+            
+            # 從配置中獲取 wait_time (event_data 是從 self.config[config_name]["events"][event_name] 來的)
+            current_wait_time = event_data.get("wait_time", 5) 
+            
+            frame.wait_spin_var = tk.IntVar(value=current_wait_time)
+            frame.wait_spin = ttk.Spinbox(frame, from_=0, to=300, textvariable=frame.wait_spin_var, width=5)
+            frame.wait_spin.pack(side=tk.LEFT, padx=5) # <--- 新增這一行來顯示 Spinbox
             
             # 綁定等待時間變更事件
             frame.wait_spin.bind('<KeyRelease>', lambda e, f=frame, en=event_name, cn=config_name: self.on_wait_time_change(e, f, en, cn))
@@ -381,7 +367,7 @@ class MHSAutoReloginApp:
             frame.record_btn.pack(side=tk.LEFT, padx=5)
             
             # 座標顯示
-            frame.coord_label = ttk.Label(frame, text=f"({event_data['coords'][0]}, {event_data['coords'][1]})")
+            frame.coord_label = ttk.Label(frame, text=f"({event_data.get('coords', [0, 0])[0]}, {event_data.get('coords', [0, 0])[1]})")
             frame.coord_label.pack(side=tk.LEFT)
             
             self.event_frames[event_name] = frame
@@ -593,7 +579,7 @@ class MHSAutoReloginApp:
                 
                 # 更新等待時間
                 if hasattr(frame, "wait_spin"):
-                    wait_time = int(frame.wait_spin.get())
+                    wait_time = int(frame.wait_spin_var.get())
                     # 移除所有舊的等待時間鍵
                     for key in list(current_config.keys()):
                         if key.startswith("操作前等待"):
@@ -690,12 +676,26 @@ class MHSAutoReloginApp:
         
         try:
             self.log("開始執行重連步驟...")
-            self.handle_disconnection()
-            self.handle_server_selection()
-            self.handle_login()
-            self.handle_secondary_password()
-            self.handle_character_selection()
-            self.handle_channel_selection()
+            
+            # 使用短路邏輯，任一步驟失敗立即返回
+            if not self.handle_disconnection():
+                return
+                
+            if not self.handle_server_selection():
+                return
+                
+            if not self.handle_login():
+                return
+                
+            if not self.handle_secondary_password():
+                return
+                
+            if not self.handle_character_selection():
+                return
+                
+            if not self.handle_channel_selection():
+                return
+                
             self.log("重連成功完成!")
             
         except Exception as e:
@@ -739,7 +739,7 @@ class MHSAutoReloginApp:
             return
             
         self.log("等待斷線確認...")
-        self.wait_and_click("點擊斷線彈出框的確定按鈕")
+        return self.wait_and_click("點擊斷線彈出框的確定按鈕")
     
     def handle_server_selection(self):
         """處理伺服器選擇"""
@@ -747,7 +747,7 @@ class MHSAutoReloginApp:
             return
             
         self.log("點擊伺服器...")
-        self.wait_and_click("點擊伺服器")
+        return self.wait_and_click("點擊伺服器")
     
     def handle_login(self):
         """處理登入按鈕"""
@@ -755,7 +755,7 @@ class MHSAutoReloginApp:
             return
             
         self.log("點擊登入按鈕...")
-        self.wait_and_click("點擊登入按鈕")
+        return self.wait_and_click("點擊登入按鈕")
     
     def handle_secondary_password(self):
         """處理二次密碼"""
@@ -767,9 +767,9 @@ class MHSAutoReloginApp:
             
         self.log("輸入二次密碼...")
         for i in range(1, 5):
-            self.wait_and_click(f"點擊二次密碼(第{i}位)")
-            
-        self.wait_and_click("點擊二次密碼確認按鈕")
+            if not self.wait_and_click(f"點擊二次密碼(第{i}位)"):
+                return
+        return self.wait_and_click("點擊二次密碼確認按鈕")
     
     def handle_character_selection(self):
         """處理角色選擇"""
@@ -777,8 +777,9 @@ class MHSAutoReloginApp:
             return
             
         self.log("點擊角色暱稱...")
-        self.wait_and_click("點擊角色暱稱")
-        self.wait_and_click("點擊進入遊戲按鈕")
+        if not self.wait_and_click("點擊角色暱稱"):
+            return
+        return self.wait_and_click("點擊進入遊戲按鈕")
     
     def handle_channel_selection(self):
         """處理分流選擇"""
@@ -786,20 +787,20 @@ class MHSAutoReloginApp:
             return
             
         self.log("點擊分流...")
-        self.wait_and_click("點擊分流")
-        self.wait_and_click("點擊登入按鈕")
+        if not self.wait_and_click("點擊分流"):
+            return
+        return self.wait_and_click("點擊登入按鈕")
     
     def cleanup_after_relogin(self):
         """重連完成後清理"""
         global is_relogining
         is_relogining = False
         self.is_running = False
-        self.log("自動重連完成")
     
     def wait_and_click(self, event_name, config_type="login"):
         """等待並點擊指定事件"""
         if not self.is_running:
-            return
+            return False
             
         # 統一讀取配置結構
         config = self.config.get(f"{config_type}_config", {})
@@ -823,9 +824,12 @@ class MHSAutoReloginApp:
         coords = event_config["coords"]
         
         time.sleep(wait_sec)
+        if not self.is_running:
+            return False
         try:
             self.click_game(*coords)
             self.log(f"已點擊 {event_name} ({coords[0]}, {coords[1]})")
+            return True
         except Exception as e:
             raise RuntimeError(f"點擊 {event_name} 失敗: {str(e)}")
     
@@ -849,92 +853,82 @@ class MHSAutoReloginApp:
     def on_wait_time_change(self, event, frame, event_name, config_name):
         """處理等待時間變更事件"""
         try:
-            # 嘗試從 spinbox 獲取值
-            wait_time = int(frame.wait_spin.get())
+            new_wait_value = int(frame.wait_spin_var.get()) # 從 IntVar 獲取值
+            if new_wait_value < 0:
+                new_wait_value = 0
             
-            # 驗證範圍
-            if wait_time < 1:
-                wait_time = 1
-                frame.wait_spin.set(wait_time)
-            elif wait_time > 300:
-                wait_time = 300
-                frame.wait_spin.set(wait_time)
-            
-            # 更新配置
-            current_config = self.config[config_name]["events"][event_name]
-            
-            # 移除所有舊的等待時間鍵
-            for key in list(current_config.keys()):
-                if key.startswith("操作前等待"):
-                    del current_config[key]
-            
-            # 添加新的等待時間
-            current_config["wait_time"] = wait_time
-            
-            # 保存配置
-            self.save_config()
-            
+            self.config[config_name]["events"][event_name]["wait_time"] = new_wait_value
+            self.log(f"事件 '{event_name}' 的等待時間更新為: {new_wait_value} 秒")
+            self.save_config() 
         except ValueError:
-            # 如果輸入的不是數字，恢復為預設值
-            frame.wait_spin.set(5)
-            self.on_wait_time_change(event, frame, event_name, config_name)  # 運行一次以確保配置更新
-    
-    def update_teleport_key(self, *args):
-        """更新奇門遁甲卷快捷鍵設置"""
-        key = self.teleport_var.get()
-        self.config["teleport_key"] = key
-        
-        # 更新相關按鈕的狀態
-        state = "disabled" if key == "不使用奇門遁甲卷" else "normal"
-        
-        # 更新事件框架的按鈕狀態
-        teleport_events = [
-            "點擊奇門遁甲卷的分頁(I or II)",
-            "點擊移動場所名稱",
-            "點擊移動按鈕"
-        ]
-        
-        for event_name in teleport_events:
-            if event_name in self.event_frames:
-                self.event_frames[event_name].record_btn.config(state=state)
-        self.save_config()
+            self.log("錯誤：等待時間必須是有效的數字")
+        except Exception as e:
+            self.log(f"更新等待時間時出錯: {str(e)}")
 
-    def execute_event(self, event_name, event_config):
+    def perform_event(self, event_name, event_data):
         """執行事件並嚴格遵守等待時間"""
         if not self.is_running:
             return False
-            
-        # 嚴格檢查配置
-        if "wait_time" not in event_config:
-            raise ValueError(f"{event_name} 事件缺少 wait_time 配置")
-        if "coords" not in event_config:
-            raise ValueError(f"{event_name} 事件缺少 coords 配置")
-            
-        # 直接使用配置中的等待時間
-        time.sleep(event_config["wait_time"])
-        
-        # 執行點擊操作
-        if self.is_running:
-            x, y = event_config["coords"]
-            self.click_game(x, y)
-            return True
-        return False
 
-    def stop_relogin(self):
-        """強制停止所有操作"""
-        self.is_running = False
-        
-        # 確保執行緒停止
-        if self.relogin_thread and self.relogin_thread.is_alive():
-            try:
-                self.relogin_thread.join(timeout=2.0)
-                if self.relogin_thread.is_alive():
-                    self.log("警告：執行緒未正常結束，強制終止中")
-            except Exception as e:
-                self.log(f"停止執行緒時出錯: {e}")
-        
-        self.log("已完全停止自動重連")
-        self.update_ui_state()
+        coords = event_data.get("coords")
+        # 從 event_data 獲取 wait_time，如果不存在則預設為0
+        wait_seconds = event_data.get("wait_time", 0)
+
+        if coords and len(coords) == 2:
+            x, y = coords
+            self.log(f"執行事件: {event_name} - 座標 ({x}, {y}), 操作前等待 {wait_seconds} 秒")
+            
+            # 操作前等待
+            if wait_seconds > 0:
+                time.sleep(wait_seconds)
+            
+            if not self.is_running: # 等待後再次檢查狀態
+                self.log(f"操作在等待 {event_name} 後被停止")
+                return False
+
+            # 執行點擊
+            if not self.click_game(x, y):
+                self.log(f"事件 {event_name} 的點擊操作失敗，可能未找到遊戲窗口。")
+                # 根據需要，這裡可以決定是否要拋出錯誤或僅記錄並繼續
+                # raise RuntimeError(f"點擊 {event_name} 失敗: 遊戲窗口無法聚焦") 
+                return False # 或者標記為失敗並允許流程繼續
+            return True
+        else:
+            self.log(f"事件 {event_name} 的座標配置無效: {coords}")
+            return False
+
+    def update_teleport_key(self, *args):
+        """更新奇門遁甲卷快捷鍵設置，並同步UI狀態"""
+        try:
+            key = self.teleport_var.get()
+            self.config["teleport_key"] = key
+            self.config["teleport_config"]["teleport_key"] = key # 確保兩處同步
+            self.log(f"奇門遁甲卷使用方式更新為: {key}")
+
+            # 更新相關按鈕的狀態
+            # 這裡的 state 決定按鈕是否可點擊
+            new_state = tk.DISABLED if key == "不使用奇門遁甲卷" else tk.NORMAL
+
+            # 定義哪些事件與奇門遁甲相關
+            teleport_related_events = [
+                "點擊奇門遁甲卷的分頁(I or II)",
+                "點擊移動場所名稱",
+                "點擊移動按鈕"
+            ]
+
+            # 遍歷所有事件框架，更新相關按鈕的狀態
+            # 確保 self.event_frames 已被正確填充
+            if hasattr(self, 'event_frames'):
+                for event_name, frame_controls in self.event_frames.items():
+                    if event_name in teleport_related_events:
+                        if hasattr(frame_controls, 'record_btn') and frame_controls.record_btn:
+                            frame_controls.record_btn.config(state=new_state)
+                        if hasattr(frame_controls, 'test_btn') and frame_controls.test_btn:
+                             frame_controls.test_btn.config(state=new_state)
+            
+            self.save_config()
+        except Exception as e:
+            self.log(f"更新奇門遁甲卷設定時出錯: {e}")
 
     def restore_game_window(self):
         """多重恢復遊戲窗口到前台"""
@@ -968,6 +962,8 @@ class MHSAutoReloginApp:
         
         try:
             pydirectinput.moveTo(x, y)  # 先移動到位置
+            time.sleep(0.5)     
+            self.log(f"移動到位置 ({x}, {y})")
             pydirectinput.mouseDown()   # 按下鼠標
             time.sleep(0.05)            # 保持按下狀態（有些遊戲需要）
             pydirectinput.mouseUp()     # 放開鼠標
