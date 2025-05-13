@@ -28,11 +28,12 @@ EXACT_DEFAULT_CONFIG = {
     "game_window_title": GAME_WINDOW_TITLE,
     "login_config": {
         "events": {
-            "點擊斷線彈出框的確定按鈕": { "coords": [976, 602], "wait_time": 3 },
+            "點擊斷線彈出框的確定按鈕": { "coords": [976, 602], "wait_time": 10 },
             "點擊伺服器": { "coords": [954, 422], "wait_time": 6 },
             "點擊登入按鈕": { "coords": [953, 689], "wait_time": 5 },
             "登入時，連線失敗的確認按鈕": { "coords": [973, 602], "wait_time": 2 },
             "登入時，連接中斷的確認按鈕": { "coords": [920, 738], "wait_time": 2 },
+            "點擊登錄按鈕": { "coords": [950, 595], "wait_time": 5 },
             "點擊二次密碼(第1位)": { "coords": [944, 537], "wait_time": 10 },
             "點擊二次密碼(第2位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼(第3位)": { "coords": [944, 537], "wait_time": 1 },
@@ -41,13 +42,13 @@ EXACT_DEFAULT_CONFIG = {
             "點擊角色暱稱": { "coords": [1809, 219], "wait_time": 3 },
             "點擊進入遊戲按鈕": { "coords": [1815, 378], "wait_time": 1 },
             "點擊分流": { "coords": [944, 420], "wait_time": 1 },
-            "點擊確定按鈕": { "coords": [954, 695], "wait_time": 1 },
+            "點擊登入按鈕": { "coords": [954, 695], "wait_time": 1 },
         }
     },
     "os_type": "Windows",
     "teleport_config": {
         "events": {
-            "點擊奇門遁甲卷的分頁(I or II)": { "coords": [855, 659], "wait_time": 1 },
+            "點擊奇門遁甲卷的分頁(I or II)": { "coords": [855, 659], "wait_time": 5 },
             "點擊移動場所名稱": { "coords": [940, 581], "wait_time": 1 },
             "點擊移動按鈕": { "coords": [952, 706], "wait_time": 1 },
             "點擊奇門遁甲卷後的分流": { "coords": [937, 418], "wait_time": 1 },
@@ -700,17 +701,17 @@ class MHSAutoReloginApp:
     def auto_relogin(self):
         """自動重連主流程"""
         if not self.is_running:
-            return
-            
+            return False
         if not self.check_prerequisites():
             self.is_relogining = False  
-            return
-            
+            return False
         self.prepare_for_relogin()
         
         try:
             self.log("開始執行重連步驟...")
-            
+            if not self.restore_game_window():
+                self.log("警告：無法聚焦遊戲窗口")
+                return False
             # 使用短路邏輯，任一步驟失敗立即返回
             if not self.handle_disconnection():
                 return
@@ -775,7 +776,7 @@ class MHSAutoReloginApp:
     def handle_disconnection(self):
         """處理斷線確認"""
         if not self.is_running:
-            return
+            return False
             
         self.log("等待斷線確認...")
         return self.wait_and_click("點擊斷線彈出框的確定按鈕", event_group_key="login_config")
@@ -783,7 +784,7 @@ class MHSAutoReloginApp:
     def handle_server_selection(self):
         """處理伺服器選擇"""
         if not self.is_running:
-            return
+            return False
             
         self.log("點擊伺服器...")
         return self.wait_and_click("點擊伺服器", event_group_key="login_config")
@@ -791,17 +792,26 @@ class MHSAutoReloginApp:
     def handle_login(self):
         """處理登入按鈕"""
         if not self.is_running:
-            return
+            return False
+        isSuccess = True
+        self.log("點擊登入按鈕...")
+        isSuccess = self.wait_and_click("點擊登入按鈕", event_group_key="login_config")
+        if not isSuccess:
+            return False
         if not self.is_network_ok():
             self.wait_and_click("登入時，連線失敗的確認按鈕", event_group_key="login_config")
             self.wait_and_click("登入時，連接中斷的確認按鈕", event_group_key="login_config")
-        self.log("點擊登入按鈕...")
-        return self.wait_and_click("點擊登入按鈕", event_group_key="login_config")
-    
+            self.wait_and_click("點擊登入按鈕", event_group_key="login_config")
+        isSuccess = self.wait_and_click("點擊登錄按鈕", event_group_key="login_config")
+        if not self.is_network_ok():
+            self.wait_and_click("登入時，連線失敗的確認按鈕", event_group_key="login_config")
+            self.wait_and_click("登入時，連接中斷的確認按鈕", event_group_key="login_config")
+            self.wait_and_click("點擊登錄按鈕", event_group_key="login_config")
+        return isSuccess
     def handle_secondary_password(self):
         """處理二次密碼"""
         if not self.is_running:
-            return
+            return False
         self.log("點擊二次密碼...")
         for i in range(1, 5):
             if not self.wait_and_click(f"點擊二次密碼(第{i}位)", event_group_key="login_config"):
@@ -811,7 +821,7 @@ class MHSAutoReloginApp:
     def handle_character_selection(self):
         """處理角色選擇"""
         if not self.is_running:
-            return
+            return False
             
         self.log("點擊角色暱稱...")
         if not self.wait_and_click("點擊角色暱稱", event_group_key="login_config"):
@@ -825,8 +835,8 @@ class MHSAutoReloginApp:
         self.log("點擊分流...")
         if not self.wait_and_click("點擊分流", event_group_key="login_config"):
             return False
-        self.log("點擊進入遊戲按鈕...") # 假設點擊分流後是點擊確認/進入遊戲按鈕
-        if not self.wait_and_click("點擊進入遊戲按鈕", event_group_key="login_config"):
+        self.log("點擊登入按鈕...") # 假設點擊分流後是點擊確認/進入遊戲按鈕
+        if not self.wait_and_click("點擊登入按鈕", event_group_key="login_config"):
             return False
         return True # 所有步驟成功
 
@@ -1043,28 +1053,26 @@ class MHSAutoReloginApp:
         except Exception as e:
             self.log(f"更新奇門遁甲卷設定時出錯: {e}")
 
-    def restore_game_window(self):
-        """多重恢復遊戲窗口到前台"""
-        max_attempts = 3
-        game_window_title = self.config.get("game_window_title", GAME_WINDOW_TITLE)
-        for attempt in range(1, max_attempts+1):
-            try:
-                windows = gw.getWindowsWithTitle(game_window_title)
-                if windows:
-                    game_window = windows[0]
-                    if game_window.isMinimized:
-                        self.debug_log(f'還原窗口 (嘗試 {attempt}/{max_attempts})')
-                        game_window.restore()
-                        time.sleep(1)
-                        self.debug_log(f'聚焦窗口 (嘗試 {attempt}/{max_attempts})')
-                    game_window.activate()
-                    time.sleep(0.5)  # 確保窗口完成聚焦
-                    return True
-            except Exception as e:
-                self.debug_log(f"恢復窗口失敗 (嘗試 {attempt}/{max_attempts}): {e}")
-                time.sleep(1)
-        return False
-
+    def restore_game_window(self): # 新增 self
+        """切換至遊戲窗口"""
+        try:
+            windows = gw.getWindowsWithTitle(GAME_WINDOW_TITLE)
+            if windows:
+                game_window = windows[0]
+                if game_window.isMinimized:
+                    self.debug_log('還原遊戲窗口') # 改為 self.debug_log
+                    game_window.restore()
+                    time.sleep(1) # 等待窗口還原
+                self.debug_log('聚焦遊戲窗口') # 改為 self.debug_log
+                game_window.activate()
+                time.sleep(0.5)  # 確保窗口完成聚焦
+                return True
+            else:
+                self.debug_log(f"找不到遊戲窗口: {GAME_WINDOW_TITLE}")
+                return False
+        except Exception as e:
+            self.debug_log(f"恢復遊戲窗口失敗: {e}")
+            return False
     def click_game(self, x, y, clicks=1):
         """點擊遊戲窗口指定位置"""
         if not self.is_running:
