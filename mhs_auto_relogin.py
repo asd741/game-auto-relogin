@@ -9,6 +9,8 @@ import pygetwindow as gw
 import pydirectinput
 import time
 import ctypes
+import keyboard
+import traceback
 
 # 全局變量
 GAME_WINDOW_TITLE = "墨香 Online-16年在地經營 官方正版授權"
@@ -44,9 +46,9 @@ TELEPORT_CONFIG = {
 
 TRAINING_CONFIG = {
     "events": {
-        "點擊地面讓角色走路(必填)": {"操作前等待 5 秒": True, "coords": [500, 400]},
-        "開始狩獵": {"操作前等待 5 秒": True, "coords": [732, 760]},
-        "結束狩獵": {"操作前等待 5 秒": True, "coords": [732, 760]}
+        "點擊地面讓角色走路": {"操作前等待 5 秒": True, "coords": [313, 454]},
+        "點擊自動狩獵圖標": {"操作前等待 3 秒": True, "coords": [1392, 1061]},
+        "點擊開始自動狩獵按鈕": {"操作前等待 3 秒": True, "coords": [732, 760]},
     }
 }
 
@@ -405,27 +407,111 @@ class MHSAutoReloginApp:
             return
             
         self.recording_event = event_name
-        self.status_var.set(f"準備記錄: {event_name} (請點擊遊戲視窗)")
+        self.status_var.set(f"正在記錄: {event_name} 的座標")
         
-        # 綁定滑鼠點擊事件
-        self.root.bind('<Button-1>', lambda e: self.on_mouse_click(e.x, e.y))
+        # 創建一個新的座標記錄視窗
+        self.record_window = tk.Toplevel(self.root)
+        self.record_window.title(f"記錄座標: {event_name}")
+        self.record_window.geometry("400x250")
+        self.record_window.resizable(False, False)
+        self.record_window.transient(self.root)
+        self.record_window.protocol("WM_DELETE_WINDOW", self.cancel_recording)
+        
+        # 顯示說明
+        ttk.Label(self.record_window, text="每秒將在日誌區顯示目前滑鼠座標").pack(pady=5)
+        
+        # 座標輸入框架
+        coord_frame = ttk.Frame(self.record_window)
+        coord_frame.pack(pady=10, fill=tk.X, padx=20)
+        
+        # X 座標輸入
+        ttk.Label(coord_frame, text="X 座標:").grid(row=0, column=0, padx=5, pady=5)
+        self.x_entry = ttk.Entry(coord_frame, width=10)
+        self.x_entry.grid(row=0, column=1, padx=5, pady=5)
+        
+        # Y 座標輸入
+        ttk.Label(coord_frame, text="Y 座標:").grid(row=0, column=2, padx=5, pady=5)
+        self.y_entry = ttk.Entry(coord_frame, width=10)
+        self.y_entry.grid(row=0, column=3, padx=5, pady=5)
+        
+        # 使用目前滑鼠座標按鈕
+        ttk.Button(self.record_window, text="使用目前滑鼠座標", command=self.use_current_mouse_position).pack(pady=5)
+        
+        # 確認按鈕
+        ttk.Button(self.record_window, text="確認記錄座標", command=self.confirm_coordinates).pack(pady=5)
+        
+        # 取消按鈕
+        ttk.Button(self.record_window, text="取消", command=self.cancel_recording).pack(pady=5)
+        
+        # 開始定時更新滑鼠座標
+        self.update_mouse_position()
+        
+        # 綁定 Escape 鍵取消記錄
         self.root.bind('<Escape>', self.cancel_recording)
         
-    def on_mouse_click(self, x, y):
-        """處理滑鼠點擊事件"""
+        self.log(f"開始記錄 {event_name} 的座標")
+        
+    def update_mouse_position(self):
+        """定時更新滑鼠座標顯示"""
+        if not self.recording_event or not hasattr(self, 'record_window'):
+            return
+            
+        try:
+            # 取得目前滑鼠的座標
+            x, y = pyautogui.position()
+            self.current_mouse_pos = (x, y)
+            
+            # 每秒在日誌區顯示目前滑鼠座標
+            self.log(f"目前滑鼠座標: ({x}, {y})")
+            
+            # 每 1000ms (1秒) 更新一次
+            self.record_window.after(1000, self.update_mouse_position)
+            
+        except Exception as e:
+            self.log(f"更新滑鼠座標失敗: {str(e)}")
+            
+    def use_current_mouse_position(self):
+        """使用目前滑鼠座標填充輸入框"""
+        if hasattr(self, 'current_mouse_pos'):
+            x, y = self.current_mouse_pos
+            self.x_entry.delete(0, tk.END)
+            self.x_entry.insert(0, str(x))
+            self.y_entry.delete(0, tk.END)
+            self.y_entry.insert(0, str(y))
+            
+    def confirm_coordinates(self):
+        """確認記錄座標"""
+        if not self.recording_event:
+            return
+            
+        try:
+            # 從輸入框取得座標
+            try:
+                x = int(self.x_entry.get())
+                y = int(self.y_entry.get())
+            except ValueError:
+                messagebox.showerror("輸入錯誤", "請輸入有效的整數座標")
+                return
+                
+            self.process_coordinates(x, y)
+            
+            # 關閉記錄視窗
+            if hasattr(self, 'record_window'):
+                self.record_window.destroy()
+                
+        except Exception as e:
+            self.log(f"記錄座標失敗: {str(e)}")
+            self.log(traceback.format_exc())
+        
+    def process_coordinates(self, game_x, game_y):
+        """處理捕獲到的座標"""
         if not self.recording_event:
             return
             
         event_name = self.recording_event
         
-        # 獲取遊戲窗口位置
         try:
-            game_window = gw.getWindowsWithTitle(GAME_WINDOW_TITLE)[0]
-            window_rect = game_window._rect
-            
-            # 計算相對於遊戲窗口的座標
-            game_x = x - window_rect.left
-            game_y = y - window_rect.top
+            self.log(f"記錄座標: ({game_x}, {game_y})")
             
             # 統一處理所有類型的座標記錄
             if event_name in ["點擊奇門遁甲卷的分頁(I or II)", "點擊移動場所名稱", "點擊移動按鈕"]:
@@ -440,7 +526,7 @@ class MHSAutoReloginApp:
                 }
                 current_config = self.config["teleport_config"]["events"][event_name]
             
-            elif event_name in ["開始狩獵", "結束狩獵"]:
+            elif event_name in ["點擊地面讓角色走路", "點擊自動狩獵圖標", "點擊開始自動狩獵按鈕"]:
                 # 處理狩獵配置
                 if "training_config" not in self.config:
                     self.config["training_config"] = {"events": {}}
@@ -487,6 +573,8 @@ class MHSAutoReloginApp:
             
         except Exception as e:
             self.log(f"記錄座標失敗: {e}")
+            import traceback
+            self.log(traceback.format_exc())
         
         # 解除綁定並重置狀態
         self.root.unbind('<Button-1>')
@@ -496,10 +584,19 @@ class MHSAutoReloginApp:
         
     def cancel_recording(self, event=None):
         """取消座標記錄"""
-        self.root.unbind('<Button-1>')
+        # 關閉記錄視窗
+        if hasattr(self, 'record_window'):
+            self.record_window.destroy()
+            
         self.root.unbind('<Escape>')
         self.recording_event = None
         self.status_var.set("就緒")
+
+    def create_game_info_frame(self, parent):
+        """創建遊戲資訊框架"""
+        info_frame = ttk.LabelFrame(parent, text="遊戲資訊", padding=10)
+        info_frame.pack(fill=tk.X, pady=5)
+        return info_frame
     
     def toggle_auto_relogin(self):
         if self.is_running:
@@ -531,26 +628,35 @@ class MHSAutoReloginApp:
         self.log("自動重連已停止")
     
     def run_main_loop(self):
+        global is_relogining
         while self.is_running:
             if not is_relogining:
                 if is_game_disconnected():
+                    self.log("[偵測到斷線] 開始自動重連流程...")
+                    is_relogining = True
                     self.auto_relogin()
+                    is_relogining = False
             time.sleep(1)  # 基礎檢查間隔
     
     def auto_relogin(self):
         """自動重連主流程"""
+        global is_relogining
+        
         if not self.check_prerequisites():
+            is_relogining = False  # 重設重連狀態
             return
             
         self.prepare_for_relogin()
         
         try:
+            self.log("開始執行重連步驟...")
             self.handle_disconnection()
             self.handle_server_selection()
             self.handle_login()
             self.handle_secondary_password()
             self.handle_character_selection()
             self.handle_channel_selection()
+            self.log("重連成功完成!")
             
         except Exception as e:
             self.log(f"重連過程中發生錯誤: {str(e)}")
@@ -560,15 +666,25 @@ class MHSAutoReloginApp:
     
     def check_prerequisites(self):
         """檢查自動重連前置條件"""
-        if self.is_running:
-            self.log("自動重連已在運行中")
-            return False
+        # 移除對 self.is_running 的檢查，因為重連運行時 is_running 本來就應該是 True
+        # 改為使用全局變量 is_relogining 來避免重複重連
             
         if not self.is_game_running():
             self.log("遊戲未運行，請先啟動遊戲")
             return False
             
         return True
+        
+    def is_game_running(self):
+        """檢查遊戲是否正在運行"""
+        try:
+            for proc in psutil.process_iter(['pid', 'name']):
+                if proc.info['name'] == GAME_PROCESS_NAME:
+                    return True
+            return False
+        except Exception as e:
+            self.log(f"檢查遊戲運行狀態失敗: {e}")
+            return False
     
     def prepare_for_relogin(self):
         """準備自動重連"""
