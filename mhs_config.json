@@ -1,0 +1,145 @@
+{
+    "game_env": "聊天優先",
+    "game_process_name": "MHClient-Connect.exe",
+    "game_window_title": "墨香 Online-16年在地經營 官方正版授權",
+    "login_config": {
+        "events": {
+            "若登入失敗的確認按鈕(非必填)": {
+                "coords": [
+                    973,
+                    602
+                ],
+                "wait_time": 10
+            },
+            "點擊二次密碼(第一位)": {
+                "coords": [
+                    944,
+                    537
+                ],
+                "wait_time": 1
+            },
+            "點擊二次密碼(第三位)": {
+                "coords": [
+                    944,
+                    537
+                ],
+                "wait_time": 1
+            },
+            "點擊二次密碼(第二位)": {
+                "coords": [
+                    944,
+                    537
+                ],
+                "wait_time": 1
+            },
+            "點擊二次密碼(第四位)": {
+                "coords": [
+                    944,
+                    537
+                ],
+                "wait_time": 1
+            },
+            "點擊二次密碼確認按鈕": {
+                "coords": [
+                    951,
+                    571
+                ],
+                "wait_time": 5
+            },
+            "點擊伺服器": {
+                "coords": [
+                    954,
+                    422
+                ],
+                "wait_time": 15
+            },
+            "點擊分流": {
+                "coords": [
+                    944,
+                    420
+                ],
+                "wait_time": 5
+            },
+            "點擊斷線彈出框的確定按鈕": {
+                "coords": [
+                    976,
+                    602
+                ],
+                "wait_time": 3
+            },
+            "點擊登入按鈕": {
+                "coords": [
+                    954,
+                    695
+                ],
+                "wait_time": 5
+            },
+            "點擊角色暱稱": {
+                "coords": [
+                    1809,
+                    219
+                ],
+                "wait_time": 5
+            },
+            "點擊進入遊戲按鈕": {
+                "coords": [
+                    1815,
+                    378
+                ],
+                "wait_time": 5
+            }
+        }
+    },
+    "os_type": "Windows",
+    "teleport_config": {
+        "events": {
+            "點擊奇門遁甲卷的分頁(I or II)": {
+                "coords": [
+                    855,
+                    659
+                ],
+                "wait_time": 5
+            },
+            "點擊移動場所名稱": {
+                "coords": [
+                    940,
+                    581
+                ],
+                "wait_time": 5
+            },
+            "點擊移動按鈕": {
+                "coords": [
+                    952,
+                    706
+                ],
+                "wait_time": 5
+            }
+        }
+    },
+    "teleport_key": "不使用奇門遁甲卷",
+    "training_config": {
+        "events": {
+            "點擊地面讓角色走路": {
+                "coords": [
+                    313,
+                    454
+                ],
+                "wait_time": 5
+            },
+            "點擊自動狩獵圖標": {
+                "coords": [
+                    1392,
+                    1061
+                ],
+                "wait_time": 3
+            },
+            "點擊開始自動狩獵按鈕": {
+                "coords": [
+                    732,
+                    760
+                ],
+                "wait_time": 3
+            }
+        }
+    }
+}

@@ -17,6 +17,3 @@ build/
 # IDE
 .vscode/
 .idea/
-
-# Project specific
-mhs_config.json

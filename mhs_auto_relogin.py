@@ -11,48 +11,50 @@ import time
 import ctypes
 import keyboard
 import traceback
+import win32gui
+import win32con
+import socket
 
 # 全局變量
 GAME_WINDOW_TITLE = "墨香 Online-16年在地經營 官方正版授權"
 GAME_PROCESS_NAME = "MHClient-Connect.exe"
 is_relogining = False
 is_running = False
+DEBUG = True
 
 # 事件配置 (繁體中文顯示)
 LOGIN_CONFIG = {
-    "點擊斷線彈出框的確定按鈕": {"操作前等待 30 秒": True, "coords": [976, 602]},
-    "點擊伺服器": {"操作前等待 15 秒": True, "coords": [954, 422]},
-    "點擊登入按鈕": {"操作前等待 10 秒": True, "coords": [953, 689]},
-    "若登入失敗的確認按鈕(非必填)": {"操作前等待 10 秒": True, "coords": [973, 602]},
-    "點擊二次密碼(第一位)": {"操作前等待 1 秒": True, "coords": [944, 537]},
-    "點擊二次密碼(第二位)": {"操作前等待 1 秒": True, "coords": [944, 537]},
-    "點擊二次密碼(第三位)": {"操作前等待 1 秒": True, "coords": [944, 537]},
-    "點擊二次密碼(第四位)": {"操作前等待 1 秒": True, "coords": [944, 537]},
-    "點擊二次密碼確認按鈕": {"操作前等待 5 秒": True, "coords": [951, 571]},
-    "點擊角色暱稱": {"操作前等待 5 秒": True, "coords": [1809, 219]},
-    "點擊進入遊戲按鈕": {"操作前等待 5 秒": True, "coords": [1815, 378]},
-    "點擊分流": {"操作前等待 5 秒": True, "coords": [944, 420]},
-    "點擊登入按鈕": {"操作前等待 5 秒": True, "coords": [954, 695]}
+    "點擊斷線彈出框的確定按鈕": {"wait_time": 30, "coords": [976, 602]},
+    "點擊伺服器": {"wait_time": 15, "coords": [954, 422]},
+    "點擊登入按鈕": {"wait_time": 10, "coords": [953, 689]},
+    "若登入失敗的確認按鈕(非必填)": {"wait_time": 10, "coords": [973, 602]},
+    "點擊二次密碼(第一位)": {"wait_time": 1, "coords": [944, 537]},
+    "點擊二次密碼(第二位)": {"wait_time": 1, "coords": [944, 537]},
+    "點擊二次密碼(第三位)": {"wait_time": 1, "coords": [944, 537]},
+    "點擊二次密碼(第四位)": {"wait_time": 1, "coords": [944, 537]},
+    "點擊二次密碼確認按鈕": {"wait_time": 5, "coords": [951, 571]},
+    "點擊角色暱稱": {"wait_time": 5, "coords": [1809, 219]},
+    "點擊進入遊戲按鈕": {"wait_time": 5, "coords": [1815, 378]},
+    "點擊分流": {"wait_time": 5, "coords": [944, 420]},
+    "點擊登入按鈕": {"wait_time": 5, "coords": [954, 695]}
 }
 
 TELEPORT_CONFIG = {
     "teleport_key": "不使用奇門遁甲卷",
     "events": {
-        "點擊奇門遁甲卷的分頁(I or II)": {"操作前等待 5 秒": True, "coords": [855, 659]},
-        "點擊移動場所名稱": {"操作前等待 5 秒": True, "coords": [940, 581]},
-        "點擊移動按鈕": {"操作前等待 5 秒": True, "coords": [952, 706]}
+        "點擊奇門遁甲卷的分頁(I or II)": {"wait_time": 5, "coords": [855, 659]},
+        "點擊移動場所名稱": {"wait_time": 5, "coords": [940, 581]},
+        "點擊移動按鈕": {"wait_time": 5, "coords": [952, 706]}
     }
 }
 
 TRAINING_CONFIG = {
     "events": {
-        "點擊地面讓角色走路": {"操作前等待 5 秒": True, "coords": [313, 454]},
-        "點擊自動狩獵圖標": {"操作前等待 3 秒": True, "coords": [1392, 1061]},
-        "點擊開始自動狩獵按鈕": {"操作前等待 3 秒": True, "coords": [732, 760]},
+        "點擊地面讓角色走路": {"wait_time": 5, "coords": [313, 454]},
+        "點擊自動狩獵圖標": {"wait_time": 3, "coords": [1392, 1061]},
+        "點擊開始自動狩獵按鈕": {"wait_time": 3, "coords": [732, 760]},
     }
 }
-
-# 不再需要EventFrame類，已改為直接在函數中創建UI元件
 
 class MHSAutoReloginApp:
     def __init__(self, root):
@@ -174,9 +176,37 @@ class MHSAutoReloginApp:
             return self.load_default_config()
     
     def save_config(self):
-        with open(self.config_file, "w", encoding="utf-8") as f:
-            json.dump(self.config, f, indent=4, ensure_ascii=False)
-        self.log("所有配置已保存")
+        """嚴格模式保存配置，只更新現有key的value"""
+        try:
+            # 先讀取當前配置文件內容
+            with open(self.config_file, 'r', encoding='utf-8') as f:
+                current_config = json.load(f)
+            
+            # 深度合併配置（只更新現有key）
+            def deep_update(target, source):
+                for key in list(target.keys()):
+                    if key in source:
+                        if isinstance(target[key], dict) and isinstance(source[key], dict):
+                            deep_update(target[key], source[key])
+                        else:
+                            target[key] = source[key]
+            
+            # 執行嚴格更新
+            deep_update(current_config, self.config)
+            
+            # 寫回文件
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(current_config, f, 
+                         indent=4, 
+                         ensure_ascii=False,
+                         sort_keys=True)
+                
+            self.log("配置已保存（嚴格模式）")
+            return True
+            
+        except Exception as e:
+            self.log(f"保存配置失敗: {str(e)}")
+            return False
     
     def create_main_panels(self):
         """創建主要面板"""
@@ -326,7 +356,7 @@ class MHSAutoReloginApp:
                 if key.startswith("操作前等待"):
                     wait_time = int(key.split()[1])
                     break
-            event_data.setdefault(f"操作前等待 {wait_time} 秒", True)
+            event_data.setdefault("wait_time", wait_time)
             event_data.setdefault("coords", [0, 0])
             
             frame = ttk.Frame(parent)
@@ -503,6 +533,12 @@ class MHSAutoReloginApp:
             self.log(f"記錄座標失敗: {str(e)}")
             self.log(traceback.format_exc())
         
+        # 解除綁定並重置狀態
+        self.root.unbind('<Button-1>')
+        self.root.unbind('<Escape>')
+        self.recording_event = None
+        self.status_var.set("就緒")
+        
     def process_coordinates(self, game_x, game_y):
         """處理捕獲到的座標"""
         if not self.recording_event:
@@ -521,7 +557,7 @@ class MHSAutoReloginApp:
                 if "events" not in self.config["teleport_config"]:
                     self.config["teleport_config"]["events"] = {}
                 self.config["teleport_config"]["events"][event_name] = {
-                    "操作前等待 5 秒": True,
+                    "wait_time": 5,
                     "coords": [game_x, game_y]
                 }
                 current_config = self.config["teleport_config"]["events"][event_name]
@@ -533,7 +569,7 @@ class MHSAutoReloginApp:
                 if "events" not in self.config["training_config"]:
                     self.config["training_config"]["events"] = {}
                 self.config["training_config"]["events"][event_name] = {
-                    "操作前等待 5 秒": True,
+                    "wait_time": 5,
                     "coords": [game_x, game_y]
                 }
                 current_config = self.config["training_config"]["events"][event_name]
@@ -544,7 +580,7 @@ class MHSAutoReloginApp:
                     self.config["login_config"] = {"events": {}}
                 if event_name not in self.config["login_config"]["events"]:
                     self.config["login_config"]["events"][event_name] = {
-                        "操作前等待 5 秒": True,
+                        "wait_time": 5,
                         "coords": [0, 0]
                     }
                 self.config["login_config"]["events"][event_name]["coords"] = [game_x, game_y]
@@ -563,7 +599,7 @@ class MHSAutoReloginApp:
                         if key.startswith("操作前等待"):
                             del current_config[key]
                     # 添加新的等待時間
-                    current_config[f"操作前等待 {wait_time} 秒"] = True
+                    current_config["wait_time"] = wait_time
             
             # 保存配置
             self.save_config()
@@ -631,17 +667,21 @@ class MHSAutoReloginApp:
         global is_relogining
         while self.is_running:
             if not is_relogining:
-                if is_game_disconnected():
-                    self.log("[偵測到斷線] 開始自動重連流程...")
-                    is_relogining = True
-                    self.auto_relogin()
-                    is_relogining = False
+                is_relogining = True
+                self.auto_relogin()
+                is_relogining = False
+                # if is_game_disconnected():
+                #     self.log("[偵測到斷線] 開始自動重連流程...")
+                #     is_relogining = True
+                #     self.auto_relogin()
+                #     is_relogining = False
             time.sleep(1)  # 基礎檢查間隔
     
     def auto_relogin(self):
         """自動重連主流程"""
-        global is_relogining
-        
+        if not self.is_running:
+            return
+            
         if not self.check_prerequisites():
             is_relogining = False  # 重設重連狀態
             return
@@ -678,7 +718,7 @@ class MHSAutoReloginApp:
     def is_game_running(self):
         """檢查遊戲是否正在運行"""
         try:
-            for proc in psutil.process_iter(['pid', 'name']):
+            for proc in psutil.process_iter(['pid', 'name']):           
                 if proc.info['name'] == GAME_PROCESS_NAME:
                     return True
             return False
@@ -695,21 +735,33 @@ class MHSAutoReloginApp:
     
     def handle_disconnection(self):
         """處理斷線確認"""
+        if not self.is_running:
+            return
+            
         self.log("等待斷線確認...")
         self.wait_and_click("點擊斷線彈出框的確定按鈕")
     
     def handle_server_selection(self):
         """處理伺服器選擇"""
+        if not self.is_running:
+            return
+            
         self.log("點擊伺服器...")
         self.wait_and_click("點擊伺服器")
     
     def handle_login(self):
         """處理登入按鈕"""
+        if not self.is_running:
+            return
+            
         self.log("點擊登入按鈕...")
         self.wait_and_click("點擊登入按鈕")
     
     def handle_secondary_password(self):
         """處理二次密碼"""
+        if not self.is_running:
+            return
+            
         if not self.config.get("enable_secondary_password", False):
             return
             
@@ -721,12 +773,18 @@ class MHSAutoReloginApp:
     
     def handle_character_selection(self):
         """處理角色選擇"""
+        if not self.is_running:
+            return
+            
         self.log("點擊角色暱稱...")
         self.wait_and_click("點擊角色暱稱")
         self.wait_and_click("點擊進入遊戲按鈕")
     
     def handle_channel_selection(self):
         """處理分流選擇"""
+        if not self.is_running:
+            return
+            
         self.log("點擊分流...")
         self.wait_and_click("點擊分流")
         self.wait_and_click("點擊登入按鈕")
@@ -738,23 +796,38 @@ class MHSAutoReloginApp:
         self.is_running = False
         self.log("自動重連完成")
     
-    def wait_and_click(self, event_name):
+    def wait_and_click(self, event_name, config_type="login"):
         """等待並點擊指定事件"""
-        event_config = self.config["login_config"]["events"].get(event_name, {})
-        interval = event_config.get("interval", 5)
-        max_wait = event_config.get("max_wait", 10)
-        coords = event_config.get("coords", [0, 0])
+        if not self.is_running:
+            return
+            
+        # 統一讀取配置結構
+        config = self.config.get(f"{config_type}_config", {})
+        if not config:
+            raise ValueError(f"缺少 {config_type}_config 配置節點")
+            
+        events = config.get("events", {})
+        if not events:
+            raise ValueError(f"{config_type}_config 中缺少 events 配置")
+            
+        event_config = events.get(event_name)
+        if event_config is None:
+            raise ValueError(f"events 中缺少 {event_name} 事件配置")
         
-        start_time = time.time()
-        while time.time() - start_time < max_wait:
-            try:
-                self.click_game(*coords)
-                self.log(f"已點擊 {event_name} ({coords[0]}, {coords[1]})")
-                return
-            except:
-                time.sleep(interval)
-                
-        raise TimeoutError(f"等待 {event_name} 超時")
+        if "wait_time" not in event_config:
+            raise ValueError(f"{event_name} 事件缺少 wait_time 配置")
+        if "coords" not in event_config:
+            raise ValueError(f"{event_name} 事件缺少 coords 配置")
+            
+        wait_sec = event_config["wait_time"]
+        coords = event_config["coords"]
+        
+        time.sleep(wait_sec)
+        try:
+            self.click_game(*coords)
+            self.log(f"已點擊 {event_name} ({coords[0]}, {coords[1]})")
+        except Exception as e:
+            raise RuntimeError(f"點擊 {event_name} 失敗: {str(e)}")
     
     def log(self, message):
         timestamp = time.strftime("%H:%M:%S")
@@ -796,7 +869,7 @@ class MHSAutoReloginApp:
                     del current_config[key]
             
             # 添加新的等待時間
-            current_config[f"操作前等待 {wait_time} 秒"] = True
+            current_config["wait_time"] = wait_time
             
             # 保存配置
             self.save_config()
@@ -828,17 +901,18 @@ class MHSAutoReloginApp:
 
     def execute_event(self, event_name, event_config):
         """執行事件並嚴格遵守等待時間"""
-        # 獲取等待時間（默認5秒）
-        wait_sec = next((int(k.split()[1]) for k in event_config 
-                       if k.startswith("操作前等待")), 5)
-        
-        # 分段等待以便及時響應停止指令
-        start = time.time()
-        while time.time() - start < wait_sec:
-            if not self.is_running:
-                return False
-            time.sleep(0.1)  # 短間隔檢查
+        if not self.is_running:
+            return False
             
+        # 嚴格檢查配置
+        if "wait_time" not in event_config:
+            raise ValueError(f"{event_name} 事件缺少 wait_time 配置")
+        if "coords" not in event_config:
+            raise ValueError(f"{event_name} 事件缺少 coords 配置")
+            
+        # 直接使用配置中的等待時間
+        time.sleep(event_config["wait_time"])
+        
         # 執行點擊操作
         if self.is_running:
             x, y = event_config["coords"]
@@ -885,69 +959,55 @@ class MHSAutoReloginApp:
 
     def click_game(self, x, y, clicks=1):
         """點擊遊戲窗口指定位置"""
+        if not self.is_running:
+            return False
+            
         if not self.restore_game_window():
             self.log("警告：無法聚焦遊戲窗口")
             return False
         
         try:
-            pyautogui.click(x, y, clicks=clicks)
-            time.sleep(0.3)  # 點擊後固定等待時間
+            pydirectinput.moveTo(x, y)  # 先移動到位置
+            pydirectinput.mouseDown()   # 按下鼠標
+            time.sleep(0.05)            # 保持按下狀態（有些遊戲需要）
+            pydirectinput.mouseUp()     # 放開鼠標
             return True
         except Exception as e:
             self.log(f"點擊遊戲失敗: {e}")
             return False
 
-def click_game(x, y, clicks=1):
-    debug_log(f"點擊位置: ({x}, {y})")
-    try:
-        for _ in range(clicks):
-            pydirectinput.moveTo(x, y)
-            pydirectinput.mouseDown()
-            time.sleep(0.05)
-            pydirectinput.mouseUp()
-    except Exception as e:
-        debug_log(f"點擊失敗: {e}")
-
-def is_game_disconnected():
-    try:
-        for proc in psutil.process_iter(['pid', 'name']):           
-            if proc.info['name'] == GAME_PROCESS_NAME:
-                connections = proc.connections()
-                debug_log('檢測遊戲是否正常運作...')
-                if not connections:
-                    debug_log("檢測到遊戲無網絡連接，可能已斷線！")
-                    return True
-        return False
-    except Exception as e:
-        debug_log(f"檢測網絡錯誤: {e}")
-        return False
-
-def restore_game_window():
-    try:
-        game_window = gw.getWindowsWithTitle(GAME_WINDOW_TITLE)[0]
-        if game_window.isMinimized:
-            debug_log('還原窗口')
-            game_window.restore()
-            time.sleep(1)
-            debug_log('聚焦窗口')
-        game_window.activate()
-        return True
-    except Exception as e:
-        debug_log(f"恢復窗口失敗: {e}")
-        return False
-
-def is_network_ok():
-    response = os.system("ping -n 2 8.8.8.8 > nul")
-    return response == 0
-
-def debug_log(message):
-    timestamp = time.strftime("%H:%M:%S")
-    log_message = f"[{timestamp}] DEBUG: {message}"
+    def is_game_disconnected(self):
+        """檢查遊戲是否斷線"""
+        try:
+            if not self.is_game_running():
+                return True
+                
+            # 檢查斷線彈窗
+            hwnd = win32gui.FindWindow(None, GAME_WINDOW_TITLE)
+            if hwnd == 0:
+                return True
+                
+            # 檢查網絡狀態
+            if not self.is_network_ok():
+                return True
+                
+            return False
+        except:
+            return True
     
-    if 'app' in globals() and isinstance(app, MHSAutoReloginApp):
-        app.log(log_message)
-    else:
-        print(log_message)
+    def is_network_ok(self):
+        """檢查網絡是否正常"""
+        try:
+            # 簡單的網絡檢查邏輯
+            socket.create_connection(("www.google.com", 80), timeout=5)
+            return True
+        except:
+            return False
+    
+    def debug_log(self, message):
+        """調試日誌"""
+        if DEBUG:
+            self.log(f"[DEBUG] {message}")
 
 if __name__ == "__main__":
     root = tk.Tk()
