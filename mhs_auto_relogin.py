@@ -26,8 +26,8 @@ EXACT_DEFAULT_CONFIG = {
             "點擊斷線彈出框的確定按鈕": { "coords": [976, 602], "wait_time": 1 },
             "點擊伺服器": { "coords": [954, 422], "wait_time": 1 },
             "點擊登入按鈕": { "coords": [954, 695], "wait_time": 1 },
-            "伺服器連線失敗的確認按鈕(非必填)": { "coords": [973, 602], "wait_time": 1 },
-            "伺服器的連接中斷的確認按鈕(非必填)": { "coords": [920, 738], "wait_time": 1 },
+            "登入時，連線失敗的確認按鈕": { "coords": [973, 602], "wait_time": 1 },
+            "登入時，連接中斷的確認按鈕": { "coords": [920, 738], "wait_time": 1 },
             "點擊二次密碼(第1位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼(第2位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼(第3位)": { "coords": [944, 537], "wait_time": 1 },
@@ -1116,15 +1116,13 @@ class MHSAutoReloginApp:
         while self.is_running:
             if not self.is_relogining: 
                 if self.is_game_disconnected():
-                    if not self.is_network_ok():
-                        self.log("[偵測到斷線] 等待網路恢復正常...")
-                    else: # 新增冒號
+                    if self.is_running:
                         self.log("[偵測到斷線] 開始自動重連流程...")
-                        self.is_relogining = True # 使用實例變數
-                        try:
-                            self.auto_relogin()
-                        finally:
-                            self.is_relogining = False # 使用實例變數，並確保重設
+                    self.is_relogining = True # 使用實例變數
+                    try:
+                        self.auto_relogin()
+                    finally:
+                        self.is_relogining = False # 使用實例變數，並確保重設
             time.sleep(1)  # 基礎檢查間隔
 if __name__ == "__main__":
     root = tk.Tk()
