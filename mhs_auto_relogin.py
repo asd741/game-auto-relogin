@@ -23,16 +23,17 @@ EXACT_DEFAULT_CONFIG = {
     "game_window_title": "墨香 Online-16年在地經營 官方正版授權",
     "login_config": {
         "events": {
-            "若登入失敗的確認按鈕(非必填)": { "coords": [973, 602], "wait_time": 1 },
+            "點擊斷線彈出框的確定按鈕": { "coords": [976, 602], "wait_time": 1 },
+            "點擊伺服器": { "coords": [954, 422], "wait_time": 1 },
+            "點擊登入按鈕": { "coords": [954, 695], "wait_time": 1 },
+            "伺服器連線失敗的確認按鈕(非必填)": { "coords": [973, 602], "wait_time": 1 },
+            "伺服器的連接中斷的確認按鈕(非必填)": { "coords": [920, 738], "wait_time": 1 },
             "點擊二次密碼(第1位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼(第2位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼(第3位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼(第4位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼確認按鈕": { "coords": [951, 571], "wait_time": 1 },
-            "點擊伺服器": { "coords": [954, 422], "wait_time": 1 },
             "點擊分流": { "coords": [944, 420], "wait_time": 1 },
-            "點擊斷線彈出框的確定按鈕": { "coords": [976, 602], "wait_time": 1 },
-            "點擊登入按鈕": { "coords": [954, 695], "wait_time": 1 },
             "點擊角色暱稱": { "coords": [1809, 219], "wait_time": 1 },
             "點擊進入遊戲按鈕": { "coords": [1815, 378], "wait_time": 1 }
         }
@@ -42,7 +43,9 @@ EXACT_DEFAULT_CONFIG = {
         "events": {
             "點擊奇門遁甲卷的分頁(I or II)": { "coords": [855, 659], "wait_time": 1 },
             "點擊移動場所名稱": { "coords": [940, 581], "wait_time": 1 },
-            "點擊移動按鈕": { "coords": [952, 706], "wait_time": 1 }
+            "點擊移動按鈕": { "coords": [952, 706], "wait_time": 1 },
+            "點擊奇門遁甲卷後的分流": { "coords": [937, 418], "wait_time": 1 },
+            "點擊奇門遁甲卷後的分流確認": { "coords": [952, 700], "wait_time": 1 }
         },
         "teleport_key": "不使用奇門遁甲卷" # 確保 teleport_key 在 teleport_config 中也有一份
     },
@@ -688,20 +691,6 @@ class MHSAutoReloginApp:
         self.start_btn.config(text="啟動自動重連")
         self.status_var.set("狀態: 已停止")
         self.log("自動重連已停止")
-    
-    def run_main_loop(self):
-        while self.is_running:
-            if not self.is_relogining: 
-                self.is_relogining = True 
-                self.auto_relogin()
-                self.is_relogining = False 
-                # if is_game_disconnected():
-                #     self.log("[偵測到斷線] 開始自動重連流程...")
-                #     is_relogining = True
-                #     self.auto_relogin()
-                #     is_relogining = False
-            time.sleep(1)  # 基礎檢查間隔
-    
     def auto_relogin(self):
         """自動重連主流程"""
         if not self.is_running:
@@ -797,7 +786,9 @@ class MHSAutoReloginApp:
         """處理登入按鈕"""
         if not self.is_running:
             return
-            
+        if not self.is_network_ok():
+            self.wait_and_click("伺服器連線失敗的確認按鈕(非必填)", event_group_key="login_config")
+            self.wait_and_click("伺服器的連接中斷的確認按鈕(非必填)", event_group_key="login_config")
         self.log("點擊登入按鈕...")
         return self.wait_and_click("點擊登入按鈕", event_group_key="login_config")
     
@@ -933,7 +924,7 @@ class MHSAutoReloginApp:
                 self.log(f"錯誤: 事件 '{event_name}' (來自 {source_description}) 的座標配置不正確或遺失。")
                 return False
 
-            self.log(f"執行事件: '{event_name}' (來自 {source_description}) - 等待 {wait_time} 秒...")
+            self.log(f"執行事件: '{event_name}' (等待 {wait_time} 秒...")
             time.sleep(wait_time)
 
             self.log(f"點擊座標: {coords}")
@@ -1121,7 +1112,20 @@ class MHSAutoReloginApp:
         """調試日誌"""
         if DEBUG:
             self.log(f"[DEBUG] {message}")
-
+    def run_main_loop(self):
+        while self.is_running:
+            if not self.is_relogining: 
+                if self.is_game_disconnected():
+                    if not self.is_network_ok():
+                        self.log("[偵測到斷線] 等待網路恢復正常...")
+                    else: # 新增冒號
+                        self.log("[偵測到斷線] 開始自動重連流程...")
+                        self.is_relogining = True # 使用實例變數
+                        try:
+                            self.auto_relogin()
+                        finally:
+                            self.is_relogining = False # 使用實例變數，並確保重設
+            time.sleep(1)  # 基礎檢查間隔
 if __name__ == "__main__":
     root = tk.Tk()
     app = MHSAutoReloginApp(root)
