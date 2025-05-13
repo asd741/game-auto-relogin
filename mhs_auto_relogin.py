@@ -16,26 +16,32 @@ import psutil
 import sys
 import traceback
 
+# Game-related constants
+DEBUG = True # Define DEBUG global constant
+GAME_WINDOW_TITLE = "墨香 Online-16年在地經營 官方正版授權"
+GAME_PROCESS_NAME = "MHClient-Connect.exe"
+
 # 新的、符合您提供JSON結構的預設配置常量
 EXACT_DEFAULT_CONFIG = {
     "game_env": "聊天優先",
-    "game_process_name": "MHClient-Connect.exe",
-    "game_window_title": "墨香 Online-16年在地經營 官方正版授權",
+    "game_process_name": GAME_PROCESS_NAME,
+    "game_window_title": GAME_WINDOW_TITLE,
     "login_config": {
         "events": {
-            "點擊斷線彈出框的確定按鈕": { "coords": [976, 602], "wait_time": 1 },
-            "點擊伺服器": { "coords": [954, 422], "wait_time": 1 },
-            "點擊登入按鈕": { "coords": [954, 695], "wait_time": 1 },
-            "登入時，連線失敗的確認按鈕": { "coords": [973, 602], "wait_time": 1 },
-            "登入時，連接中斷的確認按鈕": { "coords": [920, 738], "wait_time": 1 },
-            "點擊二次密碼(第1位)": { "coords": [944, 537], "wait_time": 1 },
+            "點擊斷線彈出框的確定按鈕": { "coords": [976, 602], "wait_time": 3 },
+            "點擊伺服器": { "coords": [954, 422], "wait_time": 6 },
+            "點擊登入按鈕": { "coords": [953, 689], "wait_time": 5 },
+            "登入時，連線失敗的確認按鈕": { "coords": [973, 602], "wait_time": 2 },
+            "登入時，連接中斷的確認按鈕": { "coords": [920, 738], "wait_time": 2 },
+            "點擊二次密碼(第1位)": { "coords": [944, 537], "wait_time": 10 },
             "點擊二次密碼(第2位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼(第3位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼(第4位)": { "coords": [944, 537], "wait_time": 1 },
             "點擊二次密碼確認按鈕": { "coords": [951, 571], "wait_time": 1 },
+            "點擊角色暱稱": { "coords": [1809, 219], "wait_time": 3 },
+            "點擊進入遊戲按鈕": { "coords": [1815, 378], "wait_time": 1 },
             "點擊分流": { "coords": [944, 420], "wait_time": 1 },
-            "點擊角色暱稱": { "coords": [1809, 219], "wait_time": 1 },
-            "點擊進入遊戲按鈕": { "coords": [1815, 378], "wait_time": 1 }
+            "點擊確定按鈕": { "coords": [954, 695], "wait_time": 1 },
         }
     },
     "os_type": "Windows",
@@ -52,7 +58,7 @@ EXACT_DEFAULT_CONFIG = {
     "teleport_key": "不使用奇門遁甲卷",
     "training_config": {
         "events": {
-            "點擊地面讓角色走路": { "coords": [313, 454], "wait_time": 1 },
+            "點擊地面讓角色走路": { "coords": [313, 454], "wait_time": 15 },
             "點擊自動狩獵圖標": { "coords": [1392, 1061], "wait_time": 1 },
             "點擊開始自動狩獵按鈕": { "coords": [732, 760], "wait_time": 1 }
         }
@@ -333,7 +339,7 @@ class MHSAutoReloginApp:
         warning_label.pack(fill=tk.X, pady=5)
         
         # 創建快捷鍵選擇區域
-        shortcut_frame = ttk.LabelFrame(frame, text="遁甲卷道具快捷鍵")
+        shortcut_frame = ttk.LabelFrame(frame, text="遁甲卷道具快捷鍵(登入後30秒內自動啟用)")
         shortcut_frame.pack(fill=tk.X, padx=5, pady=5)
         
         # 創建Radio按鈕
@@ -421,10 +427,10 @@ class MHSAutoReloginApp:
         info_frame.pack(fill=tk.X, pady=5)
         
         ttk.Label(info_frame, text="遊戲窗口標題:").grid(row=0, column=0, sticky=tk.W, pady=2)
-        ttk.Label(info_frame, text=self.config.get("game_window_title", "墨香 Online")).grid(row=0, column=1, sticky=tk.W, pady=2)
+        ttk.Label(info_frame, text=self.config.get("game_window_title", GAME_WINDOW_TITLE)).grid(row=0, column=1, sticky=tk.W, pady=2)
         
         ttk.Label(info_frame, text="遊戲進程名稱:").grid(row=1, column=0, sticky=tk.W, pady=2)
-        ttk.Label(info_frame, text=self.config.get("game_process_name", "MSMain_L.exe")).grid(row=1, column=1, sticky=tk.W, pady=2)
+        ttk.Label(info_frame, text=self.config.get("game_process_name", GAME_PROCESS_NAME)).grid(row=1, column=1, sticky=tk.W, pady=2)
         
         return info_frame
     
@@ -663,10 +669,10 @@ class MHSAutoReloginApp:
         info_frame.pack(fill=tk.X, pady=5)
         
         ttk.Label(info_frame, text="遊戲窗口標題:").grid(row=0, column=0, sticky=tk.W, pady=2)
-        ttk.Label(info_frame, text=self.config.get("game_window_title", "墨香 Online")).grid(row=0, column=1, sticky=tk.W, pady=2)
+        ttk.Label(info_frame, text=self.config.get("game_window_title", GAME_WINDOW_TITLE)).grid(row=0, column=1, sticky=tk.W, pady=2)
         
         ttk.Label(info_frame, text="遊戲進程名稱:").grid(row=1, column=0, sticky=tk.W, pady=2)
-        ttk.Label(info_frame, text=self.config.get("game_process_name", "MSMain_L.exe")).grid(row=1, column=1, sticky=tk.W, pady=2)
+        ttk.Label(info_frame, text=self.config.get("game_process_name", GAME_PROCESS_NAME)).grid(row=1, column=1, sticky=tk.W, pady=2)
         
         return info_frame
     
@@ -684,13 +690,13 @@ class MHSAutoReloginApp:
         self.relogin_thread = threading.Thread(target=self.run_main_loop, daemon=True)
         self.relogin_thread.start()
         
-        self.log("自動重連已啟動")
+        self.log("程序已啟動")
     
     def stop_auto_relogin(self):
         self.is_running = False
         self.start_btn.config(text="啟動自動重連")
         self.status_var.set("狀態: 已停止")
-        self.log("自動重連已停止")
+        self.log("程序即將停止...")
     def auto_relogin(self):
         """自動重連主流程"""
         if not self.is_running:
@@ -751,7 +757,7 @@ class MHSAutoReloginApp:
     def is_game_running(self):
         """檢查遊戲是否正在運行"""
         try:
-            game_process_name = self.config.get("game_process_name", "MSMain_L.exe")
+            game_process_name = self.config.get("game_process_name", GAME_PROCESS_NAME)
             for proc in psutil.process_iter(['pid', 'name']):           
                 if proc.info['name'] == game_process_name:
                     return True
@@ -787,8 +793,8 @@ class MHSAutoReloginApp:
         if not self.is_running:
             return
         if not self.is_network_ok():
-            self.wait_and_click("伺服器連線失敗的確認按鈕(非必填)", event_group_key="login_config")
-            self.wait_and_click("伺服器的連接中斷的確認按鈕(非必填)", event_group_key="login_config")
+            self.wait_and_click("登入時，連線失敗的確認按鈕", event_group_key="login_config")
+            self.wait_and_click("登入時，連接中斷的確認按鈕", event_group_key="login_config")
         self.log("點擊登入按鈕...")
         return self.wait_and_click("點擊登入按鈕", event_group_key="login_config")
     
@@ -837,7 +843,8 @@ class MHSAutoReloginApp:
             self.log("未設定奇門遁甲卷快捷鍵或設定為不使用，跳過傳送。")
             return True 
 
-        self.log(f"準備使用快捷鍵 {teleport_key} 開啟奇門遁甲卷...")
+        self.log(f"將在30秒後使用快捷鍵 {teleport_key} 開啟奇門遁甲卷...")
+        time.sleep(30)
         try:
             if teleport_key.lower() in [f'f{i}' for i in range(1, 13)]:
                 pydirectinput.press(teleport_key.lower())
@@ -1039,7 +1046,7 @@ class MHSAutoReloginApp:
     def restore_game_window(self):
         """多重恢復遊戲窗口到前台"""
         max_attempts = 3
-        game_window_title = self.config.get("game_window_title", "墨香 Online")
+        game_window_title = self.config.get("game_window_title", GAME_WINDOW_TITLE)
         for attempt in range(1, max_attempts+1):
             try:
                 windows = gw.getWindowsWithTitle(game_window_title)
@@ -1082,31 +1089,25 @@ class MHSAutoReloginApp:
     def is_game_disconnected(self):
         """檢查遊戲是否斷線"""
         try:
-            if not self.is_game_running():
-                return True
-                
-            game_window_title = self.config.get("game_window_title", "墨香 Online")
-            # 檢查斷線彈窗
-            hwnd = win32gui.FindWindow(None, game_window_title)
-            if hwnd == 0:
-                return True
-                
-            # 檢查網絡狀態
-            if not self.is_network_ok():
-                return True
-                
+            for proc in psutil.process_iter(['pid', 'name']):           
+                if proc.info['name'] == GAME_PROCESS_NAME: # Using global GAME_PROCESS_NAME
+                    connections = proc.net_connections()
+                    
+                    self.debug_log('檢測遊戲是否正常運作...')
+                    if not connections:  # 无网络连接 = 断线
+                        self.debug_log("檢測到遊戲無網路連接，可能已斷線!")
+                        return True
             return False
-        except:
-            return True
-    
+        except Exception as e:
+            self.debug_log(f"檢測網路錯誤: {e}")
+            return False
+
     def is_network_ok(self):
         """檢查網絡是否正常"""
-        try:
-            # 簡單的網絡檢查邏輯
-            socket.create_connection(("www.google.com", 80), timeout=5)
-            return True
-        except:
-            return False
+        # Ping Google DNS (8.8.8.8) 2次 (Windows)
+        response = os.system("ping -n 2 8.8.8.8 > nul")
+        # Linux/Mac 用: ping -c 2 8.8.8.8 > /dev/null
+        return response == 0  # 返回0表示成功
     
     def debug_log(self, message):
         """調試日誌"""
@@ -1116,10 +1117,8 @@ class MHSAutoReloginApp:
         while self.is_running:
             if not self.is_relogining: 
                 if self.is_game_disconnected():
-                    if self.is_running:
-                        self.log("[偵測到斷線] 開始自動重連流程...")
-                    self.is_relogining = True # 使用實例變數
                     try:
+                        self.is_relogining = True # 使用實例變數
                         self.auto_relogin()
                     finally:
                         self.is_relogining = False # 使用實例變數，並確保重設
