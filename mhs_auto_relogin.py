@@ -15,6 +15,33 @@ import copy
 import psutil
 import sys
 import traceback
+import logging
+
+# --- Logging Setup ---
+def get_application_path():
+    """獲取應用程式的預期日誌根目錄路徑。
+    對於 .py 腳本，這是腳本所在的目錄 (專案根目錄)。
+    對於從 'dist' 等子目錄運行的 .exe，這是該子目錄的父目錄 (專案根目錄)。
+    """
+    if getattr(sys, 'frozen', False):
+        # 如果應用程式是透過 PyInstaller 等工具打包的 (例如到 'dist' 目錄)
+        # sys.executable 是 .exe 的路徑 (例如 C:\\project\\dist\\app.exe)
+        # 我們希望日誌檔案在 .exe 所在目錄的上一層 (即 C:\\project)
+        application_path = os.path.abspath(os.path.join(os.path.dirname(sys.executable), '..'))
+    else:
+        # 如果應用程式是作為普通 .py 腳本執行的
+        application_path = os.path.dirname(os.path.abspath(__file__))
+    return application_path
+
+log_file_path = os.path.join(get_application_path(), 'debug.log')
+logging.basicConfig(
+    level=logging.DEBUG, # 記錄 DEBUG 級別及以上的日誌
+    format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
+    filename=log_file_path,
+    filemode='a', # 附加到日誌檔案
+    encoding='utf-8'
+)
+# --- END Logging Setup ---
 
 # Game-related constants
 DEBUG = True # Define DEBUG global constant
@@ -957,6 +984,7 @@ class MHSAutoReloginApp:
             return False
     
     def log(self, message):
+        logging.info(message) # Log to file
         timestamp = time.strftime("%H:%M:%S")
         log_message = f"[{timestamp}] {message}\n"
         
