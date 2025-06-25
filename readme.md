@@ -36,7 +36,7 @@ pip install {專案中使用到的套件}
 
 ```bash
 # 打包成單一執行檔
-pyinstaller --onefile --windowed --name "墨香自動重連工具" --icon=NONE mhs_auto_relogin.py
+pyinstaller --onefile --windowed --name "ms_auto_GUI" --icon=NONE mhs_auto_relogin.py
 ```
 
 > 注意：打包前建議先刪除 `build` 和 `dist` 資料夾以確保打包結果正確

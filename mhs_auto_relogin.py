@@ -16,6 +16,7 @@ import psutil
 import sys
 import traceback
 import logging
+pydirectinput.FAILSAFE = False
 
 # --- Logging Setup ---
 def get_application_path():
@@ -34,13 +35,14 @@ def get_application_path():
     return application_path
 
 log_file_path = os.path.join(get_application_path(), 'debug.log')
-logging.basicConfig(
-    level=logging.DEBUG, # 記錄 DEBUG 級別及以上的日誌
-    format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
-    filename=log_file_path,
-    filemode='a', # 附加到日誌檔案
-    encoding='utf-8'
-)
+# 創建一個文件處理器，並設置編碼為 utf-8
+file_handler = logging.FileHandler(log_file_path, mode='a', encoding='utf-8')
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'))
+
+# 配置根日誌記錄器
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.DEBUG)
+root_logger.addHandler(file_handler)
 # --- END Logging Setup ---
 
 # Game-related constants
@@ -69,16 +71,16 @@ EXACT_DEFAULT_CONFIG = {
             "點擊角色暱稱": { "coords": [1809, 219], "wait_time": 3 },
             "點擊進入遊戲按鈕": { "coords": [1815, 378], "wait_time": 1 },
             "點擊分流": { "coords": [944, 420], "wait_time": 1 },
-            "點擊登入按鈕": { "coords": [954, 695], "wait_time": 1 },
+            "點擊畫面中的登入按鈕": { "coords": [954, 695], "wait_time": 1 },
         }
     },
     "os_type": "Windows",
     "teleport_config": {
         "events": {
-            "點擊奇門遁甲卷的分頁(I or II)": { "coords": [855, 659], "wait_time": 5 },
-            "點擊移動場所名稱": { "coords": [940, 581], "wait_time": 1 },
+            "點擊奇門遁甲卷的分頁(I or II)": { "coords": [886, 660], "wait_time": 5 },
+            "點擊移動場所名稱": { "coords": [945, 421], "wait_time": 1 },
             "點擊移動按鈕": { "coords": [952, 706], "wait_time": 1 },
-            "點擊奇門遁甲卷後的分流": { "coords": [937, 418], "wait_time": 1 },
+            "點擊奇門遁甲卷後的分流": { "coords": [914, 445], "wait_time": 1 },
             "點擊奇門遁甲卷後的分流確認": { "coords": [952, 700], "wait_time": 1 }
         },
         "teleport_key": "不使用奇門遁甲卷" # 確保 teleport_key 在 teleport_config 中也有一份
@@ -613,7 +615,7 @@ class MHSAutoReloginApp:
             self.log(f"記錄座標: ({game_x}, {game_y})")
             
             # 統一處理所有類型的座標記錄
-            if event_name in ["點擊奇門遁甲卷的分頁(I or II)", "點擊移動場所名稱", "點擊移動按鈕"]:
+            if event_name in ["點擊奇門遁甲卷的分頁(I or II)", "點擊移動場所名稱", "點擊移動按鈕","點擊奇門遁甲卷後的分流","點擊奇門遁甲卷後的分流確認"]:
                 # 處理奇門遁甲卷配置
                 if "teleport_config" not in self.config:
                     self.config["teleport_config"] = {"events": {}}
@@ -815,26 +817,23 @@ class MHSAutoReloginApp:
             
         self.log("點擊伺服器...")
         return self.wait_and_click("點擊伺服器", event_group_key="login_config")
-    
     def handle_login(self):
         """處理登入按鈕"""
         if not self.is_running:
             return False
-        isSuccess = True
         self.log("點擊登入按鈕...")
-        isSuccess = self.wait_and_click("點擊登入按鈕", event_group_key="login_config")
-        if not isSuccess:
-            return False
-        if not self.is_network_ok():
+        try:
+            # 不管連線成功或失敗，都重試兩次，都連線失敗，就連不上了
+            self.wait_and_click("點擊登入按鈕", event_group_key="login_config")
             self.wait_and_click("登入時，連線失敗的確認按鈕", event_group_key="login_config")
             self.wait_and_click("登入時，連接中斷的確認按鈕", event_group_key="login_config")
             self.wait_and_click("點擊登入按鈕", event_group_key="login_config")
-        isSuccess = self.wait_and_click("點擊登錄按鈕", event_group_key="login_config")
-        if not self.is_network_ok():
-            self.wait_and_click("登入時，連線失敗的確認按鈕", event_group_key="login_config")
-            self.wait_and_click("登入時，連接中斷的確認按鈕", event_group_key="login_config")
+            self.log("不管連線是否成功，總之多重試幾次，避免出現連線中斷或失敗的情況")
             self.wait_and_click("點擊登錄按鈕", event_group_key="login_config")
-        return isSuccess
+            return True
+        except Exception as e:
+            self.log(f"登入伺服器時發生錯誤: {e}")
+            return False
     def handle_secondary_password(self):
         """處理二次密碼"""
         if not self.is_running:
@@ -1064,7 +1063,9 @@ class MHSAutoReloginApp:
             teleport_related_events = [
                 "點擊奇門遁甲卷的分頁(I or II)",
                 "點擊移動場所名稱",
-                "點擊移動按鈕"
+                "點擊移動按鈕",
+                "點擊奇門遁甲卷後的分流",
+                "點擊奇門遁甲卷後的分流確認"
             ]
 
             # 遍歷所有事件框架，更新相關按鈕的狀態
@@ -1137,14 +1138,6 @@ class MHSAutoReloginApp:
         except Exception as e:
             self.debug_log(f"檢測網路錯誤: {e}")
             return False
-
-    def is_network_ok(self):
-        """檢查網絡是否正常"""
-        # Ping Google DNS (8.8.8.8) 2次 (Windows)
-        response = os.system("ping -n 2 8.8.8.8 > nul")
-        # Linux/Mac 用: ping -c 2 8.8.8.8 > /dev/null
-        return response == 0  # 返回0表示成功
-    
     def debug_log(self, message):
         """調試日誌"""
         if DEBUG:
